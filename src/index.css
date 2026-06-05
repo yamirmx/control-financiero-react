@@ -1,6 +1,41 @@
-@import "tailwindcss";
+/* --- RECUPERACIÓN DE ESTILOS ORIGINALES --- */
 
-/* Esto obliga a toda la aplicación a usar la letra Poppins */
+/* 1. Fuente Inter para todo el proyecto */
 * {
-  font-family: 'Poppins', sans-serif !important;
+  font-family: 'Inter', sans-serif !important;
+}
+
+/* 2. Colores de texto (Modo Claro por defecto) */
+body {
+  color: #1e293b !important; /* text-main */
+}
+p, span, div, label {
+  color: inherit;
+}
+.text-muted {
+  color: #64748b !important;
+}
+
+/* Colores de texto (Modo Oscuro) */
+/* (Aplica si tu React usa la clase .dark o .dark-mode) */
+body.dark-mode, body.dark {
+  color: #f1f5f9 !important; /* text-main oscuro */
+}
+body.dark-mode .text-muted, body.dark .text-muted {
+  color: #94a3b8 !important;
+}
+
+/* 3. Ícono del calendario adaptativo */
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="month"]::-webkit-calendar-picker-indicator { 
+    opacity: 0.6; 
+    cursor: pointer; 
+}
+
+/* Invertir el calendario a color blanco en modo oscuro */
+body.dark-mode input[type="date"]::-webkit-calendar-picker-indicator,
+body.dark-mode input[type="month"]::-webkit-calendar-picker-indicator,
+.dark input[type="date"]::-webkit-calendar-picker-indicator,
+.dark input[type="month"]::-webkit-calendar-picker-indicator { 
+    filter: invert(1); 
 }
