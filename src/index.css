@@ -1,1 +1,6 @@
 @import "tailwindcss";
+
+/* Esto obliga a toda la aplicación a usar la letra Poppins */
+* {
+  font-family: 'Poppins', sans-serif !important;
+}
