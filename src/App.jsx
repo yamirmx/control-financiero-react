@@ -53,7 +53,7 @@ function AnimatedCounter({ value }) {
   return <>{displayValue.toLocaleString('en-US')}</>;
 }
 
-// Iconos SVG (Reemplazo para los que tenías)
+// Iconos SVG 
 const IconSun = () => <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"></path></svg>;
 const IconMoon = () => <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"></path></svg>;
 const IconLogout = () => <svg width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>;
@@ -161,7 +161,7 @@ function AuthScreen({ setToken, setUserEmail, showToast, isDarkMode }) {
 
   return (
     <div className="flex items-center justify-center min-h-screen p-4 bg-slate-100 dark:bg-slate-950 transition-colors">
-      <div className={`w-full max-w-md p-8 rounded-3xl shadow-2xl border ${isDarkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-100 text-slate-800'}`}>
+      <div className={`w-full max-w-md p-8 rounded-3xl shadow-2xl border ${isDarkMode ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-800'}`}>
         <div className="text-center mb-8">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-indigo-100 dark:bg-indigo-900/30 text-indigo-500 mb-4 text-3xl">
             💰
@@ -182,7 +182,7 @@ function AuthScreen({ setToken, setUserEmail, showToast, isDarkMode }) {
             required 
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className={`w-full px-5 py-4 rounded-xl outline-none transition-all ${isDarkMode ? 'bg-slate-950 focus:bg-slate-950 border border-slate-800 focus:border-indigo-500 text-white' : 'bg-slate-50 focus:bg-white border border-transparent focus:border-indigo-400 focus:shadow-[0_0_0_4px_rgba(99,102,241,0.1)] text-slate-800'}`} 
+            className={`w-full px-5 py-4 rounded-xl outline-none transition-all ${isDarkMode ? 'bg-slate-950 focus:bg-slate-950 border border-slate-700 focus:border-indigo-500 text-white' : 'bg-slate-50 focus:bg-white border border-transparent focus:border-indigo-400 focus:shadow-[0_0_0_4px_rgba(99,102,241,0.1)] text-slate-800'}`} 
           />
           <input 
             type="password" 
@@ -190,7 +190,7 @@ function AuthScreen({ setToken, setUserEmail, showToast, isDarkMode }) {
             required 
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className={`w-full px-5 py-4 rounded-xl outline-none transition-all ${isDarkMode ? 'bg-slate-950 focus:bg-slate-950 border border-slate-800 focus:border-indigo-500 text-white' : 'bg-slate-50 focus:bg-white border border-transparent focus:border-indigo-400 focus:shadow-[0_0_0_4px_rgba(99,102,241,0.1)] text-slate-800'}`} 
+            className={`w-full px-5 py-4 rounded-xl outline-none transition-all ${isDarkMode ? 'bg-slate-950 focus:bg-slate-950 border border-slate-700 focus:border-indigo-500 text-white' : 'bg-slate-50 focus:bg-white border border-transparent focus:border-indigo-400 focus:shadow-[0_0_0_4px_rgba(99,102,241,0.1)] text-slate-800'}`} 
           />
           <button 
             type="submit" 
@@ -215,8 +215,8 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
   const [searchTerm, setSearchTerm] = useState('');
   const [filterMonth, setFilterMonth] = useState('');
   const [expandedRows, setExpandedRows] = useState({});
-  const [loadingMore, setLoadingMore] = useState(false);
 
+  // Estados para Modals de Confirmación de UI Reemplazando SweetAlert2
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, id: null, name: '' });
   const [editModal, setEditModal] = useState({ isOpen: false, id: null, name: '', newName: '' });
   const [refundModal, setRefundModal] = useState({ isOpen: false, targetId: null, targetName: '', options: [], selectedId: '', monto: 0, fecha: '' });
@@ -241,29 +241,7 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
     fetchDashboard();
   }, []);
 
-  const loadMoreTransactions = async (cuentaId, currentCount) => {
-    setLoadingMore(true);
-    try {
-      const res = await fetch(`${API}/api/cuentas/${cuentaId}/transacciones?skip=${currentCount}`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (!res.ok) throw new Error("Error en petición");
-      const nuevasTx = await res.json();
-      
-      if(nuevasTx.length === 0) {
-        showToast("No hay más movimientos por cargar", "info");
-      }
-
-      setCuentas(prevCuentas => prevCuentas.map(c => 
-          c.id === cuentaId ? { ...c, transacciones: [...c.transacciones, ...nuevasTx] } : c
-      ));
-    } catch (e) {
-      showToast("Error al cargar más movimientos", "error");
-    } finally {
-      setLoadingMore(false);
-    }
-  };
-
+  // Cálculos Automáticos Reactivos de Métricas
   const metricas = useMemo(() => {
     let ingresos = 0;
     let gastos = 0;
@@ -439,6 +417,7 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
     }
   };
 
+  // Cálculo de parámetros para Gráfico de Dona SVG (Sin dependencias externas)
   const chartData = useMemo(() => {
     const total = metricas.ingresos + metricas.gastos + metricas.deuda;
     if (total === 0) return null;
@@ -485,22 +464,22 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
 
       {/* Tarjetas de Métricas */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-        <div className={`p-8 rounded-3xl border shadow-sm flex flex-col items-center justify-center ${isDarkMode ? 'bg-slate-800/50 border-slate-800' : 'bg-white border-slate-100'}`}>
+        <div className={`p-8 rounded-3xl border shadow-sm flex flex-col items-center justify-center ${isDarkMode ? 'bg-slate-800/50 border-slate-700' : 'bg-white/80 border-slate-100 backdrop-blur-lg'}`}>
           <h3 className="text-sm font-bold uppercase tracking-wider text-slate-500 mb-2">Ingresos (Mes)</h3>
           <p className="text-4xl font-extrabold text-emerald-500">$<AnimatedCounter value={metricas.ingresos} /></p>
         </div>
-        <div className={`p-8 rounded-3xl border shadow-sm flex flex-col items-center justify-center ${isDarkMode ? 'bg-slate-800/50 border-slate-800' : 'bg-white border-slate-100'}`}>
+        <div className={`p-8 rounded-3xl border shadow-sm flex flex-col items-center justify-center ${isDarkMode ? 'bg-slate-800/50 border-slate-700' : 'bg-white/80 border-slate-100 backdrop-blur-lg'}`}>
           <h3 className="text-sm font-bold uppercase tracking-wider text-slate-500 mb-2">Gastos (Mes)</h3>
           <p className="text-4xl font-extrabold text-rose-500">$<AnimatedCounter value={metricas.gastos} /></p>
         </div>
-        <div className={`p-8 rounded-3xl border shadow-sm flex flex-col items-center justify-center ${isDarkMode ? 'bg-slate-800/50 border-slate-800' : 'bg-white border-slate-100'}`}>
+        <div className={`p-8 rounded-3xl border shadow-sm flex flex-col items-center justify-center ${isDarkMode ? 'bg-slate-800/50 border-slate-700' : 'bg-white/80 border-slate-100 backdrop-blur-lg'}`}>
           <h3 className="text-sm font-bold uppercase tracking-wider text-slate-500 mb-2">Deuda Activa</h3>
           <p className="text-4xl font-extrabold text-slate-600 dark:text-slate-300">$<AnimatedCounter value={metricas.deuda} /></p>
         </div>
       </div>
 
       {/* Gráfico de Torta SVG Autocontenido */}
-      <div className={`rounded-3xl border shadow-sm mb-10 flex flex-col justify-center items-center h-80 p-6 ${isDarkMode ? 'bg-slate-800/50 border-slate-800' : 'bg-white border-slate-100'}`}>
+      <div className={`rounded-3xl border shadow-sm mb-10 flex flex-col justify-center items-center h-80 p-6 ${isDarkMode ? 'bg-slate-800/50 border-slate-700' : 'bg-white/80 border-slate-100 backdrop-blur-lg'}`}>
         {chartData ? (
           <div className="flex flex-col md:flex-row items-center gap-8 justify-center w-full">
             <svg width="180" height="180" viewBox="0 0 120 120" className="transform -rotate-90">
@@ -521,12 +500,12 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
       </div>
 
       {/* Tabla de Cuentas */}
-      <div className={`rounded-3xl border shadow-sm overflow-hidden ${isDarkMode ? 'bg-slate-800/50 border-slate-800' : 'bg-white border-slate-100'}`}>
-        <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex flex-wrap justify-between items-center gap-4">
+      <div className={`rounded-3xl border shadow-sm overflow-hidden ${isDarkMode ? 'bg-slate-800/50 border-slate-700' : 'bg-white/80 border-slate-100 backdrop-blur-lg'}`}>
+        <div className="p-6 border-b border-slate-200 dark:border-slate-700 flex flex-wrap justify-between items-center gap-4">
           <h2 className="text-lg font-bold">Historial de Cuentas</h2>
           <div className="flex gap-4 w-full md:w-auto">
-            <input type="month" value={filterMonth} onChange={(e) => setFilterMonth(e.target.value)} className={`px-5 py-3 rounded-full text-sm outline-none transition-all ${isDarkMode ? 'bg-slate-900 border border-slate-800 focus:border-indigo-500' : 'bg-slate-50 border border-slate-100 focus:border-indigo-400'}`} />
-            <input type="text" placeholder="🔍 Buscar registro..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className={`flex-1 px-5 py-3 rounded-full text-sm outline-none transition-all ${isDarkMode ? 'bg-slate-900 border border-slate-800 focus:border-indigo-500' : 'bg-slate-50 border border-slate-100 focus:border-indigo-400'}`} />
+            <input type="month" value={filterMonth} onChange={(e) => setFilterMonth(e.target.value)} className={`px-5 py-3 rounded-full text-sm outline-none transition-all ${isDarkMode ? 'bg-slate-900 border border-slate-700 focus:border-indigo-500' : 'bg-slate-100 border border-transparent focus:border-indigo-400'}`} />
+            <input type="text" placeholder="🔍 Buscar registro..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className={`flex-1 px-5 py-3 rounded-full text-sm outline-none transition-all ${isDarkMode ? 'bg-slate-900 border border-slate-700 focus:border-indigo-500' : 'bg-slate-100 border border-transparent focus:border-indigo-400'}`} />
           </div>
         </div>
         
@@ -536,7 +515,7 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
           ) : (
             <table className="w-full text-left border-collapse hidden md:table">
               <thead>
-                <tr className="border-b border-slate-100 dark:border-slate-800">
+                <tr className="border-b border-slate-200 dark:border-slate-700">
                   <th className="p-5 text-xs font-bold uppercase tracking-wider text-slate-500">Registro</th>
                   <th className="p-5 text-xs font-bold uppercase tracking-wider text-slate-500">Estado Actual</th>
                   <th className="p-5 text-xs font-bold uppercase tracking-wider text-slate-500 text-right">Acciones</th>
@@ -577,55 +556,40 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
                       </tr>
                       {expandedRows[cuenta.id] && (
                         <tr>
-                          <td colSpan="3" className="p-0 border-b border-slate-100 dark:border-slate-800">
-                            <div className={`p-5 m-2 rounded-xl ${isDarkMode ? 'bg-slate-900' : 'bg-slate-50'}`}>
+                          <td colSpan="3" className="p-0">
+                            <div className={`p-5 m-2 rounded-xl ${isDarkMode ? 'bg-slate-900' : 'bg-slate-100'}`}>
                               {txFiltradas.length === 0 ? (
                                 <p className="text-center text-sm text-slate-500">Sin movimientos en este periodo</p>
                               ) : (
-                                <>
-                                  <table className="w-full text-sm">
-                                    <thead>
-                                      <tr className="border-b border-slate-200 dark:border-slate-700 text-slate-500 text-left">
-                                        <th className="pb-2 font-semibold">Fecha</th>
-                                        <th className="pb-2 font-semibold">Tipo</th>
-                                        <th className="pb-2 font-semibold">Monto</th>
-                                        <th className="pb-2 font-semibold">Concepto</th>
-                                      </tr>
-                                    </thead>
-                                    <tbody>
-                                      {txFiltradas.map(t => {
-                                        let tipoEtiqueta = t.tipo;
-                                        if (esPrestamoHistorial) {
-                                          if (t.tipo === "Gasto" || t.tipo === "Préstamo") tipoEtiqueta = "Préstamo";
-                                          if (t.tipo === "Ingreso" || t.tipo === "Abono") tipoEtiqueta = "Abono";
-                                        }
-                                        if (t.concepto && t.concepto.includes("[Préstamo Otorgado]")) tipoEtiqueta = "Préstamo";
-                                        
-                                        return (
-                                          <tr key={t.id} className="border-b border-slate-200 dark:border-slate-800 border-dashed last:border-0 hover:bg-slate-200/50 dark:hover:bg-slate-800/50">
-                                            <td className="py-3 text-slate-500">{new Date(t.fecha).toLocaleDateString()}</td>
-                                            <td className="py-3 font-semibold text-slate-700 dark:text-slate-300">{tipoEtiqueta}</td>
-                                            <td className="py-3 font-bold text-slate-800 dark:text-slate-100">${t.monto.toLocaleString('en-US')}</td>
-                                            <td className="py-3 text-slate-500">{t.concepto || "-"}</td>
-                                          </tr>
-                                        )
-                                      })}
-                                    </tbody>
-                                  </table>
-
-                                  {/* BOTÓN CARGAR MÁS (VISTA ESCRITORIO) */}
-                                  {!filterMonth && txFiltradas.length > 0 && (
-                                    <div className="mt-4 flex justify-center">
-                                      <button 
-                                        onClick={() => loadMoreTransactions(cuenta.id, cuenta.transacciones.length)}
-                                        disabled={loadingMore}
-                                        className="px-6 py-2 text-sm font-semibold rounded-lg bg-indigo-100 text-indigo-700 hover:bg-indigo-200 dark:bg-indigo-900/40 dark:text-indigo-400 dark:hover:bg-indigo-900/60 transition-colors disabled:opacity-50"
-                                      >
-                                        {loadingMore ? 'Cargando...' : 'Cargar más movimientos'}
-                                      </button>
-                                    </div>
-                                  )}
-                                </>
+                                <table className="w-full text-sm">
+                                  <thead>
+                                    <tr className="border-b border-slate-300 dark:border-slate-700 text-slate-500 text-left">
+                                      <th className="pb-2 font-semibold">Fecha</th>
+                                      <th className="pb-2 font-semibold">Tipo</th>
+                                      <th className="pb-2 font-semibold">Monto</th>
+                                      <th className="pb-2 font-semibold">Concepto</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {txFiltradas.map(t => {
+                                      let tipoEtiqueta = t.tipo;
+                                      if (esPrestamoHistorial) {
+                                        if (t.tipo === "Gasto" || t.tipo === "Préstamo") tipoEtiqueta = "Préstamo";
+                                        if (t.tipo === "Ingreso" || t.tipo === "Abono") tipoEtiqueta = "Abono";
+                                      }
+                                      if (t.concepto && t.concepto.includes("[Préstamo Otorgado]")) tipoEtiqueta = "Préstamo";
+                                      
+                                      return (
+                                        <tr key={t.id} className="border-b border-slate-200 dark:border-slate-800 border-dashed last:border-0 hover:bg-slate-200/50 dark:hover:bg-slate-800/50">
+                                          <td className="py-3 text-slate-500">{new Date(t.fecha).toLocaleDateString()}</td>
+                                          <td className="py-3 font-semibold text-slate-700 dark:text-slate-300">{tipoEtiqueta}</td>
+                                          <td className="py-3 font-bold text-slate-800 dark:text-slate-100">${t.monto.toLocaleString('en-US')}</td>
+                                          <td className="py-3 text-slate-500">{t.concepto || "-"}</td>
+                                        </tr>
+                                      )
+                                    })}
+                                  </tbody>
+                                </table>
                               )}
                             </div>
                           </td>
@@ -654,8 +618,8 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
                if (filterMonth && txFiltradas.length === 0) return null;
 
                return (
-                 <div key={`mob-${cuenta.id}`} className={`p-4 rounded-2xl border ${isDarkMode ? 'bg-slate-800 border-slate-800' : 'bg-white border-slate-100'}`}>
-                    <div className="flex justify-between items-start mb-4 border-b border-slate-100 dark:border-slate-800 pb-4">
+                 <div key={`mob-${cuenta.id}`} className={`p-4 rounded-2xl border ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
+                    <div className="flex justify-between items-start mb-4 border-b pb-4 dark:border-slate-700">
                       <div>
                         <div className="text-xs text-slate-400 mb-1">ID #{cuenta.id}</div>
                         <div className="font-bold text-lg">{cuenta.nombre}</div>
@@ -670,41 +634,28 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
                     </div>
                     
                     {expandedRows[`mob-${cuenta.id}`] && (
-                       <div className="mt-4 flex flex-col gap-2 border-t border-slate-100 dark:border-slate-800 pt-4">
+                       <div className="mt-4 flex flex-col gap-2">
                          {txFiltradas.length === 0 ? <p className="text-center text-sm text-slate-500">Sin movimientos</p> : 
-                          <>
-                            {txFiltradas.map(t => {
-                              let tipoEtiqueta = t.tipo;
-                              if (esPrestamoHistorial) {
-                                if (t.tipo === "Gasto" || t.tipo === "Préstamo") tipoEtiqueta = "Préstamo";
-                                if (t.tipo === "Ingreso" || t.tipo === "Abono") tipoEtiqueta = "Abono";
-                              }
-                              if (t.concepto && t.concepto.includes("[Préstamo Otorgado]")) tipoEtiqueta = "Préstamo";
-                              return (
-                                <div key={`tx-${t.id}`} className={`p-3 rounded-xl flex flex-col gap-1 ${isDarkMode ? 'bg-slate-900' : 'bg-slate-50'}`}>
-                                  <div className="flex justify-between text-xs text-slate-500">
-                                    <span>{new Date(t.fecha).toLocaleDateString()}</span>
-                                    <span className="font-semibold text-slate-700 dark:text-slate-300">{tipoEtiqueta}</span>
-                                  </div>
-                                  <div className="flex justify-between items-center mt-1">
-                                    <span className="text-sm font-medium line-clamp-1 flex-1 pr-2">{t.concepto || "-"}</span>
-                                    <span className="font-bold">${t.monto.toLocaleString('en-US')}</span>
-                                  </div>
+                          txFiltradas.map(t => {
+                            let tipoEtiqueta = t.tipo;
+                            if (esPrestamoHistorial) {
+                              if (t.tipo === "Gasto" || t.tipo === "Préstamo") tipoEtiqueta = "Préstamo";
+                              if (t.tipo === "Ingreso" || t.tipo === "Abono") tipoEtiqueta = "Abono";
+                            }
+                            if (t.concepto && t.concepto.includes("[Préstamo Otorgado]")) tipoEtiqueta = "Préstamo";
+                            return (
+                              <div key={`tx-${t.id}`} className={`p-3 rounded-xl flex flex-col gap-1 ${isDarkMode ? 'bg-slate-900' : 'bg-slate-50'}`}>
+                                <div className="flex justify-between text-xs text-slate-500">
+                                  <span>{new Date(t.fecha).toLocaleDateString()}</span>
+                                  <span className="font-semibold text-slate-700 dark:text-slate-300">{tipoEtiqueta}</span>
                                 </div>
-                              )
-                            })}
-                            
-                            {/* BOTÓN CARGAR MÁS (VISTA MÓVIL) */}
-                            {!filterMonth && txFiltradas.length > 0 && (
-                              <button 
-                                onClick={() => loadMoreTransactions(cuenta.id, cuenta.transacciones.length)}
-                                disabled={loadingMore}
-                                className="mt-2 w-full py-3 text-sm font-semibold rounded-xl bg-indigo-100 text-indigo-700 hover:bg-indigo-200 dark:bg-indigo-900/40 dark:text-indigo-400 dark:hover:bg-indigo-900/60 transition-colors disabled:opacity-50"
-                              >
-                                {loadingMore ? 'Cargando...' : 'Cargar más movimientos'}
-                              </button>
-                            )}
-                          </>
+                                <div className="flex justify-between items-center mt-1">
+                                  <span className="text-sm font-medium line-clamp-1 flex-1 pr-2">{t.concepto || "-"}</span>
+                                  <span className="font-bold">${t.monto.toLocaleString('en-US')}</span>
+                                </div>
+                              </div>
+                            )
+                          })
                          }
                        </div>
                     )}
@@ -750,7 +701,11 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
         +
       </button>
 
-      {/* Modales */}
+      {/* ========================================================
+          MODALES REEMPLAZANDO SWEETALERT2 PARA PERFECTA COMPILACIÓN
+          ======================================================== */}
+      
+      {/* Modal de Eliminación */}
       {deleteModal.isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
           <div className={`w-full max-w-md p-6 rounded-3xl border shadow-2xl ${isDarkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200 text-slate-800'}`}>
@@ -764,6 +719,7 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
         </div>
       )}
 
+      {/* Modal de Edición */}
       {editModal.isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
           <div className={`w-full max-w-md p-6 rounded-3xl border shadow-2xl ${isDarkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200 text-slate-800'}`}>
@@ -782,11 +738,12 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
         </div>
       )}
 
+      {/* Modal de Devolución de Capital */}
       {refundModal.isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
           <form onSubmit={handleRefundSubmit} className={`w-full max-w-md p-6 rounded-3xl border shadow-2xl ${isDarkMode ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200 text-slate-800'}`}>
             <h3 className="text-lg font-bold mb-2">¿A qué cuenta devuelves este capital?</h3>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">Si le prestaste a <strong>{refundModal.targetName}</strong> desde otra cuenta, elige a cuál regresar el dinero.</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">Si le prestaste a <strong>{refundModal.targetName}</strong> desde otra cuenta, elige a cuál regresar el dinero. Si es pago en efectivo, dale a Cancelar.</p>
             <select 
               required
               value={refundModal.selectedId} 
@@ -891,11 +848,11 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
     }
   };
 
-  const inputClass = `w-full px-5 py-3 rounded-xl outline-none transition-all ${isDarkMode ? 'bg-slate-900 border border-slate-800 text-slate-100 focus:border-indigo-500' : 'bg-slate-50 border border-slate-100 focus:border-indigo-400 focus:bg-white'}`;
+  const inputClass = `w-full px-5 py-3 rounded-xl outline-none transition-all ${isDarkMode ? 'bg-slate-900 border border-slate-700 text-slate-100 focus:border-indigo-500' : 'bg-slate-100 border border-transparent focus:border-indigo-400 focus:bg-white'}`;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm overflow-y-auto">
-      <div className={`w-full max-w-md p-8 rounded-3xl shadow-2xl my-8 border ${isDarkMode ? 'bg-slate-800 border-slate-800' : 'bg-white border-slate-100'}`}>
+      <div className={`w-full max-w-md p-8 rounded-3xl shadow-2xl my-8 border ${isDarkMode ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200'}`}>
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-xl font-bold">Nuevo Movimiento</h2>
           <button onClick={onClose} className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-700 flex items-center justify-center hover:bg-rose-100 dark:hover:bg-rose-900/30 transition-colors">✕</button>
@@ -948,7 +905,7 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
           <input type="text" placeholder="Concepto (Opcional)" value={concepto} onChange={e => setConcepto(e.target.value)} className={inputClass} />
 
           {tipo !== 'Ingreso' && (
-            <div className={`p-4 rounded-2xl border ${isDarkMode ? 'bg-slate-900 border-slate-800' : 'bg-slate-50 border-slate-100'}`}>
+            <div className={`p-4 rounded-2xl border ${isDarkMode ? 'bg-slate-900 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
               <label className="flex items-center gap-3 cursor-pointer text-sm font-semibold mb-2 text-slate-700 dark:text-slate-300">
                 <input type="checkbox" checked={isTransfer} onChange={(e) => setIsTransfer(e.target.checked)} className="w-5 h-5 accent-indigo-500" />
                 💳 Descontar fondos de otra cuenta
