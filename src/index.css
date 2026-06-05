@@ -1,43 +1,27 @@
+/* 1. Encendemos el motor de Tailwind CSS */
 @import "tailwindcss";
 
-/* --- RECUPERACIÓN DE ESTILOS ORIGINALES --- */
+/* 2. Forzamos la fuente elegante Inter en toda la app */
 
-/* 1. Fuente Inter para todo el proyecto */
-* {
-  font-family: 'Inter', sans-serif !important;
+{
+font-family: 'Inter', sans-serif !important;
 }
 
-/* 2. Colores de texto (Modo Claro por defecto) */
+/* 3. Ajustes finos para transiciones globales */
 body {
-  color: #1e293b !important; /* text-main */
-}
-p, span, div, label {
-  color: inherit;
-}
-.text-muted {
-  color: #64748b !important;
+@apply transition-colors duration-300;
+margin: 0;
+-webkit-font-smoothing: antialiased;
 }
 
-/* Colores de texto (Modo Oscuro) */
-/* (Aplica si tu React usa la clase .dark o .dark-mode) */
-body.dark-mode, body.dark {
-  color: #f1f5f9 !important; /* text-main oscuro */
-}
-body.dark-mode .text-muted, body.dark .text-muted {
-  color: #94a3b8 !important;
-}
-
-/* 3. Ícono del calendario adaptativo */
+/* 4. Magia para el Modo Oscuro: Invertir el color del ícono del calendario */
 input[type="date"]::-webkit-calendar-picker-indicator,
-input[type="month"]::-webkit-calendar-picker-indicator { 
-    opacity: 0.6; 
-    cursor: pointer; 
+input[type="month"]::-webkit-calendar-picker-indicator {
+opacity: 0.6;
+cursor: pointer;
 }
 
-/* Invertir el calendario a color blanco en modo oscuro */
-body.dark-mode input[type="date"]::-webkit-calendar-picker-indicator,
-body.dark-mode input[type="month"]::-webkit-calendar-picker-indicator,
 .dark input[type="date"]::-webkit-calendar-picker-indicator,
-.dark input[type="month"]::-webkit-calendar-picker-indicator { 
-    filter: invert(1); 
+.dark input[type="month"]::-webkit-calendar-picker-indicator {
+filter: invert(1);
 }
