@@ -1,10 +1,14 @@
 @import "tailwindcss";
+
+/* ESTA ES LA LÍNEA MÁGICA QUE ARREGLA EL MODO OSCURO EN TAILWIND V4 */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 
 html,
 body,
 #root {
-    font-family: 'Inter', sans-serif;
+    font-family: 'Inter', sans-serif !important;
 }
 
 /* --- RECUPERACIÓN DE ESTILOS ORIGINALES --- */
