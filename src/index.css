@@ -1,76 +1,44 @@
 @import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 
-:root{
-  --bg:#F6F8FC;
-  --card:#FFFFFF;
-  --border:#E9EEF5;
-
-  --text:#2D3748;
-  --muted:#718096;
-
-  --success:#17C784;
-  --danger:#FF4D6D;
-  --primary:#5B67F1;
-
-  --shadow:
-    0 10px 30px rgba(15,23,42,.04),
-    0 2px 8px rgba(15,23,42,.03);
-
-  --shadow-hover:
-    0 20px 40px rgba(15,23,42,.08),
-    0 5px 15px rgba(15,23,42,.05);
+html,
+body,
+#root {
+    font-family: 'Inter', sans-serif;
 }
 
-*{
-  font-family:'Inter',sans-serif;
+/* --- RECUPERACIÓN DE ESTILOS ORIGINALES --- */
+
+/* Colores de texto (Modo Claro por defecto) */
+body {
+  color: #1e293b !important; /* text-main */
+}
+p, span, div, label {
+  color: inherit;
+}
+.text-muted {
+  color: #64748b !important;
 }
 
-html{
-  background:var(--bg);
+/* Colores de texto (Modo Oscuro) */
+body.dark-mode, body.dark {
+  color: #f1f5f9 !important; /* text-main oscuro */
+}
+body.dark-mode .text-muted, body.dark .text-muted {
+  color: #94a3b8 !important;
 }
 
-body{
-  margin:0;
-  background:var(--bg);
-  color:var(--text);
-
-  -webkit-font-smoothing:antialiased;
-  -moz-osx-font-smoothing:grayscale;
-
-  transition:.3s ease;
+/* Ícono del calendario adaptativo */
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="month"]::-webkit-calendar-picker-indicator { 
+    opacity: 0.6; 
+    cursor: pointer; 
 }
 
-.soft-card{
-  background:var(--card);
-  border:1px solid var(--border);
-  border-radius:24px;
-  box-shadow:var(--shadow);
-
-  transition:.25s ease;
-}
-
-.soft-card:hover{
-  transform:translateY(-2px);
-  box-shadow:var(--shadow-hover);
-}
-
-.metric-title{
-  font-size:.75rem;
-  letter-spacing:.12em;
-  text-transform:uppercase;
-  font-weight:700;
-  color:#8A94A6;
-}
-
-.metric-value{
-  font-size:3rem;
-  font-weight:800;
-}
-
-.soft-table tr{
-  transition:.2s ease;
-}
-
-.soft-table tbody tr:hover{
-  background:#F9FBFD;
+/* Invertir el calendario a color blanco en modo oscuro */
+body.dark-mode input[type="date"]::-webkit-calendar-picker-indicator,
+body.dark-mode input[type="month"]::-webkit-calendar-picker-indicator,
+.dark input[type="date"]::-webkit-calendar-picker-indicator,
+.dark input[type="month"]::-webkit-calendar-picker-indicator { 
+    filter: invert(1); 
 }
