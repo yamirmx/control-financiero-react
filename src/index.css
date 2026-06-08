@@ -1,27 +1,76 @@
-/* 1. Encendemos el motor de Tailwind CSS */
 @import "tailwindcss";
 
-/* 2. Forzamos la fuente elegante Inter en toda la app */
+:root{
+  --bg:#F6F8FC;
+  --card:#FFFFFF;
+  --border:#E9EEF5;
 
-{
-font-family: 'Inter', sans-serif !important;
+  --text:#2D3748;
+  --muted:#718096;
+
+  --success:#17C784;
+  --danger:#FF4D6D;
+  --primary:#5B67F1;
+
+  --shadow:
+    0 10px 30px rgba(15,23,42,.04),
+    0 2px 8px rgba(15,23,42,.03);
+
+  --shadow-hover:
+    0 20px 40px rgba(15,23,42,.08),
+    0 5px 15px rgba(15,23,42,.05);
 }
 
-/* 3. Ajustes finos para transiciones globales */
-body {
-@apply transition-colors duration-300;
-margin: 0;
--webkit-font-smoothing: antialiased;
+*{
+  font-family:'Inter',sans-serif;
 }
 
-/* 4. Magia para el Modo Oscuro: Invertir el color del ícono del calendario */
-input[type="date"]::-webkit-calendar-picker-indicator,
-input[type="month"]::-webkit-calendar-picker-indicator {
-opacity: 0.6;
-cursor: pointer;
+html{
+  background:var(--bg);
 }
 
-.dark input[type="date"]::-webkit-calendar-picker-indicator,
-.dark input[type="month"]::-webkit-calendar-picker-indicator {
-filter: invert(1);
+body{
+  margin:0;
+  background:var(--bg);
+  color:var(--text);
+
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+
+  transition:.3s ease;
+}
+
+.soft-card{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:24px;
+  box-shadow:var(--shadow);
+
+  transition:.25s ease;
+}
+
+.soft-card:hover{
+  transform:translateY(-2px);
+  box-shadow:var(--shadow-hover);
+}
+
+.metric-title{
+  font-size:.75rem;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+  font-weight:700;
+  color:#8A94A6;
+}
+
+.metric-value{
+  font-size:3rem;
+  font-weight:800;
+}
+
+.soft-table tr{
+  transition:.2s ease;
+}
+
+.soft-table tbody tr:hover{
+  background:#F9FBFD;
 }
