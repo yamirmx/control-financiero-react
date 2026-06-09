@@ -20,7 +20,9 @@ const loadScript = (url) => {
   });
 };
 
-// Formateador Monetario Global MXN
+// ==========================================
+// FORMATEO MONETARIO GLOBAL (MXN)
+// ==========================================
 export const formatMoney = (amount) => {
   return new Intl.NumberFormat('es-MX', {
     style: 'currency',
@@ -30,7 +32,6 @@ export const formatMoney = (amount) => {
   }).format(amount);
 };
 
-// Contador Animado con Formato MXN
 function AnimatedCounter({ value }) {
   const [displayValue, setDisplayValue] = useState(0);
 
@@ -177,10 +178,10 @@ function AuthScreen({ setToken, setUserEmail, showToast, isDarkMode }) {
           <div className="inline-flex items-center justify-center w-20 h-20 rounded-[24px] bg-[#6366F1]/10 text-[#6366F1] mb-6">
             <IconWallet />
           </div>
-          <h2 className="text-3xl font-extrabold tracking-tight">{isRegisterMode ? 'Comienza ahora' : 'Bienvenido de nuevo'}</h2>
+          <h2 className="text-2xl font-semibold tracking-tight">{isRegisterMode ? 'Comienza ahora' : 'Bienvenido de nuevo'}</h2>
           <p className={`mt-3 text-sm font-medium ${isDarkMode ? 'text-[#9CA3AF]' : 'text-[#64748B]'}`}>
             {isRegisterMode ? '¿Ya tienes una cuenta?' : '¿Aún no tienes cuenta?'}
-            <button type="button" onClick={() => setIsRegisterMode(!isRegisterMode)} className="ml-1 text-[#6366F1] hover:text-indigo-500 transition-colors">
+            <button type="button" onClick={() => setIsRegisterMode(!isRegisterMode)} className="ml-1 text-[#6366F1] font-medium hover:text-indigo-500 transition-colors">
               {isRegisterMode ? 'Inicia sesión' : 'Regístrate'}
             </button>
           </p>
@@ -197,7 +198,7 @@ function AuthScreen({ setToken, setUserEmail, showToast, isDarkMode }) {
           />
           <button 
             type="submit" disabled={loading}
-            className="w-full py-4 mt-4 rounded-[20px] bg-[#6366F1] hover:bg-indigo-500 text-white font-bold tracking-wide transition-all active:scale-[0.98] disabled:opacity-50 shadow-[0_8px_20px_rgba(99,102,241,0.25)]"
+            className="w-full py-4 mt-4 rounded-[20px] bg-[#6366F1] hover:bg-indigo-500 text-white font-medium tracking-wide transition-all active:scale-[0.98] disabled:opacity-50 shadow-[0_8px_20px_rgba(99,102,241,0.25)]"
           >
             {loading ? 'Procesando...' : (isRegisterMode ? 'Crear cuenta' : 'Ingresar')}
           </button>
@@ -221,6 +222,7 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
 
   const [deleteModal, setDeleteModal] = useState({ isOpen: false, id: null, name: '' });
   const [editModal, setEditModal] = useState({ isOpen: false, id: null, name: '', newName: '' });
+  const [refundModal, setRefundModal] = useState({ isOpen: false, targetId: null, targetName: '', options: [], selectedId: '', monto: 0, fecha: '' });
 
   const fetchDashboard = async () => {
     try {
@@ -256,7 +258,7 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
   };
 
   // ==========================================
-  // LÓGICA FINANCIERA REESCRITA Y AISLADA
+  // LÓGICA FINANCIERA CORREGIDA Y AISLADA
   // ==========================================
   const metricas = useMemo(() => {
     let ingresos = 0, gastos = 0, deuda = 0;
@@ -266,32 +268,37 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
     cuentas.forEach(u => {
       const txs = u.transacciones || [];
       
-      // Determinar si la cuenta es una "Cuenta por cobrar" (ej. un préstamo otorgado a una persona)
+      // Si la cuenta tiene al menos un préstamo donde el usuario es el prestamista, es Cuenta por Cobrar
       const isLoanAccount = txs.some(t => t.tipo === "Préstamo" && (!t.concepto || !t.concepto.includes("[Préstamo Otorgado]")));
       
-      // Calcular balance real de esta cuenta
       let balanceCuenta = 0;
       txs.forEach(t => {
          if(t.tipo === 'Ingreso' || t.tipo === 'Abono') balanceCuenta += t.monto;
          if(t.tipo === 'Gasto' || t.tipo === 'Préstamo') balanceCuenta -= t.monto;
       });
 
+      // Cálculo de DEUDA ACTIVA (Sólo el dinero que realmente te deben en las Cuentas por Cobrar)
       if (isLoanAccount) {
-        // La deuda activa es el dinero que te deben (balance negativo)
         if (balanceCuenta < 0) deuda += Math.abs(balanceCuenta);
       }
 
-      // Los Ingresos y Gastos Reales ignoran las cuentas de préstamos y las transferencias
+      // Cálculo de INGRESOS y GASTOS (Se ignoran las Cuentas por Cobrar para no mezclar)
       if (!isLoanAccount) {
         txs.forEach(t => {
           const fechaTx = new Date(t.fecha);
           if (fechaTx.getMonth() === mesActual && fechaTx.getFullYear() === anioActual) {
             const concepto = t.concepto || "";
-            const isTransfer = concepto.includes("[Transferencia]") || concepto.includes("[Pago de]");
             
-            if (!isTransfer) {
-              if (t.tipo === "Ingreso") ingresos += t.monto;
-              if (t.tipo === "Gasto") gastos += t.monto;
+            // FILTROS ESTRICTOS: No considerar transferencias ni devoluciones de préstamos
+            const isTransfer = concepto.includes("[Transferencia]");
+            const isCapitalDevuelto = concepto.includes("[Capital Devuelto]");
+            const isPrestamoOtorgado = concepto.includes("[Préstamo Otorgado]");
+
+            if (t.tipo === "Ingreso" && !isTransfer && !isCapitalDevuelto) {
+              ingresos += t.monto;
+            }
+            if (t.tipo === "Gasto" && !isTransfer && !isPrestamoOtorgado) {
+              gastos += t.monto;
             }
           }
         });
@@ -353,6 +360,23 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
     doc.save(`Estado_Cuenta_${cuenta.nombre}.pdf`);
   };
 
+  const handleRefundSubmit = async (e) => {
+    e.preventDefault();
+    if (!refundModal.selectedId) return setRefundModal(prev => ({ ...prev, isOpen: false }));
+    try {
+      await fetch(`${API}/movimientos`, {
+        method: 'POST', headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`},
+        body: JSON.stringify({
+          cuentaId: Number(refundModal.selectedId), tipo: "Ingreso", monto: refundModal.monto,
+          concepto: `[Capital Devuelto] Abono de ${refundModal.targetName}`,
+          fecha: refundModal.fecha ? new Date(refundModal.fecha + "T12:00:00").toISOString() : new Date().toISOString()
+        })
+      });
+      setRefundModal(prev => ({ ...prev, isOpen: false }));
+      fetchDashboard();
+    } catch (error) {}
+  };
+
   const chartData = useMemo(() => {
     const total = metricas.ingresos + metricas.gastos + metricas.deuda;
     if (total === 0) return null;
@@ -367,11 +391,11 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
     };
   }, [metricas]);
 
-  // Constantes de estilo premium adaptadas a Linear/Vercel
+  // Constantes de estilo premium adaptadas a Soft UI / Notion
   const cardClass = `rounded-[32px] transition-all border ${isDarkMode ? 'bg-[#1F2937] border-[#374151] shadow-2xl' : 'bg-[#F7F9FC] border-[#E2E8F0] shadow-[0_8px_30px_rgb(0,0,0,0.04)]'}`;
   const iconBtnClass = `w-10 h-10 rounded-[12px] flex items-center justify-center transition-all duration-200 hover:scale-105 active:scale-95`;
   const textMuted = isDarkMode ? 'text-[#9CA3AF]' : 'text-[#64748B]';
-  const textSecondary = isDarkMode ? 'text-[#D1D5DB]' : 'text-[#64748B]';
+  const textSecondary = isDarkMode ? 'text-[#D1D5DB]' : 'text-[#475569]';
 
   // === EMPTY STATE DEL DASHBOARD ===
   if (!loading && cuentas.length === 0) {
@@ -381,15 +405,15 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
           <div>
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 bg-[#6366F1] rounded-[12px] flex items-center justify-center text-white shadow-lg shadow-indigo-500/20"><IconWallet /></div>
-              <h1 className="text-2xl font-bold tracking-tight">Finanzas</h1>
+              <h1 className="text-2xl font-semibold tracking-tight">Finanzas</h1>
             </div>
             <p className={`${textSecondary} text-sm font-medium mt-2`}>{userEmail}</p>
           </div>
           <div className="flex items-center gap-3">
-            <button onClick={toggleTheme} className={`flex items-center gap-2 px-5 py-2.5 rounded-[16px] text-sm font-semibold transition-all border ${isDarkMode ? 'bg-[#1F2937] border-[#374151] text-[#D1D5DB]' : 'bg-white border-[#E2E8F0] text-[#1E293B] shadow-sm'}`}>
+            <button onClick={toggleTheme} className={`flex items-center gap-2 px-5 py-2.5 rounded-[16px] text-sm font-medium transition-all border ${isDarkMode ? 'bg-[#1F2937] border-[#374151] text-[#D1D5DB]' : 'bg-white border-[#E2E8F0] text-[#1E293B] shadow-sm'}`}>
               {isDarkMode ? <><IconSun /> Claro</> : <><IconMoon /> Oscuro</>}
             </button>
-            <button onClick={handleLogout} className={`flex items-center gap-2 px-5 py-2.5 rounded-[16px] text-sm font-semibold transition-all border text-[#F43F5E] ${isDarkMode ? 'bg-[#1F2937] border-[#374151]' : 'bg-white border-[#E2E8F0] shadow-sm'}`}>
+            <button onClick={handleLogout} className={`flex items-center gap-2 px-5 py-2.5 rounded-[16px] text-sm font-medium transition-all border text-[#F43F5E] ${isDarkMode ? 'bg-[#1F2937] border-[#374151]' : 'bg-white border-[#E2E8F0] shadow-sm'}`}>
               <IconLogout /> Salir
             </button>
           </div>
@@ -399,9 +423,9 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
           <div className="w-24 h-24 bg-[#6366F1]/10 text-[#6366F1] rounded-full flex items-center justify-center mb-6">
             <IconWallet />
           </div>
-          <h2 className="text-3xl font-extrabold mb-3 tracking-tight">Comienza tu control financiero</h2>
+          <h2 className="text-2xl font-semibold mb-3 tracking-tight">Comienza tu control financiero</h2>
           <p className={`${textSecondary} mb-10 max-w-md font-medium text-base`}>Aún no tienes cuentas ni movimientos registrados. Rompe el lienzo en blanco creando tu primer registro y descubre el potencial de tus métricas.</p>
-          <button onClick={() => setIsModalOpen(true)} className="px-8 py-4 bg-[#6366F1] text-white font-bold rounded-[20px] shadow-[0_8px_20px_rgba(99,102,241,0.25)] hover:bg-indigo-500 hover:scale-105 active:scale-95 transition-all flex items-center gap-3">
+          <button onClick={() => setIsModalOpen(true)} className="px-8 py-4 bg-[#6366F1] text-white font-medium rounded-[20px] shadow-[0_8px_20px_rgba(99,102,241,0.25)] hover:bg-indigo-500 hover:scale-105 active:scale-95 transition-all flex items-center gap-3">
             <IconPlus /> Crear primer movimiento
           </button>
         </div>
@@ -421,16 +445,16 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
             <div className="w-10 h-10 bg-[#6366F1] rounded-[12px] flex items-center justify-center text-white shadow-lg shadow-indigo-500/20">
               <IconWallet />
             </div>
-            <h1 className="text-2xl font-bold tracking-tight">Finanzas</h1>
+            <h1 className="text-2xl font-semibold tracking-tight">Finanzas</h1>
           </div>
           <p className={`${textSecondary} text-sm font-medium mt-2`}>{userEmail}</p>
         </div>
 
         <div className="flex items-center gap-3">
-          <button onClick={toggleTheme} className={`flex items-center gap-2 px-5 py-2.5 rounded-[16px] text-sm font-semibold transition-all border ${isDarkMode ? 'bg-[#1F2937] border-[#374151] text-[#D1D5DB] hover:bg-[#273449]' : 'bg-white border-[#E2E8F0] text-[#1E293B] shadow-sm hover:shadow-md'}`}>
+          <button onClick={toggleTheme} className={`flex items-center gap-2 px-5 py-2.5 rounded-[16px] text-sm font-medium transition-all border ${isDarkMode ? 'bg-[#1F2937] border-[#374151] text-[#D1D5DB] hover:bg-[#273449]' : 'bg-white border-[#E2E8F0] text-[#1E293B] shadow-sm hover:shadow-md'}`}>
             {isDarkMode ? <><IconSun /> Claro</> : <><IconMoon /> Oscuro</>}
           </button>
-          <button onClick={handleLogout} className={`flex items-center gap-2 px-5 py-2.5 rounded-[16px] text-sm font-semibold transition-all border text-[#F43F5E] ${isDarkMode ? 'bg-[#1F2937] border-[#374151] hover:bg-[#273449]' : 'bg-white border-[#E2E8F0] shadow-sm hover:shadow-md'}`}>
+          <button onClick={handleLogout} className={`flex items-center gap-2 px-5 py-2.5 rounded-[16px] text-sm font-medium transition-all border text-[#F43F5E] ${isDarkMode ? 'bg-[#1F2937] border-[#374151] hover:bg-[#273449]' : 'bg-white border-[#E2E8F0] shadow-sm hover:shadow-md'}`}>
             <IconLogout /> Salir
           </button>
         </div>
@@ -439,16 +463,16 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
       {/* MÉTRICAS */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div className={`${cardClass} p-8 flex flex-col justify-center`}>
-          <p className={`uppercase tracking-widest text-[11px] font-bold ${textMuted} mb-2`}>Ingresos (Mes)</p>
-          <h2 className="text-[40px] font-extrabold text-[#10B981] tracking-tighter leading-none"><AnimatedCounter value={metricas.ingresos} /></h2>
+          <p className={`uppercase tracking-widest text-xs font-medium ${textMuted} mb-2`}>Ingresos (Mes)</p>
+          <h2 className="text-[40px] font-semibold text-[#10B981] tracking-tighter leading-none"><AnimatedCounter value={metricas.ingresos} /></h2>
         </div>
         <div className={`${cardClass} p-8 flex flex-col justify-center`}>
-          <p className={`uppercase tracking-widest text-[11px] font-bold ${textMuted} mb-2`}>Gastos (Mes)</p>
-          <h2 className="text-[40px] font-extrabold text-[#F43F5E] tracking-tighter leading-none"><AnimatedCounter value={metricas.gastos} /></h2>
+          <p className={`uppercase tracking-widest text-xs font-medium ${textMuted} mb-2`}>Gastos (Mes)</p>
+          <h2 className="text-[40px] font-semibold text-[#F43F5E] tracking-tighter leading-none"><AnimatedCounter value={metricas.gastos} /></h2>
         </div>
         <div className={`${cardClass} p-8 flex flex-col justify-center`}>
-          <p className={`uppercase tracking-widest text-[11px] font-bold ${textMuted} mb-2`}>Deuda Activa (A tu favor)</p>
-          <h2 className="text-[40px] font-extrabold text-[#1E293B] dark:text-[#F9FAFB] tracking-tighter leading-none"><AnimatedCounter value={metricas.deuda} /></h2>
+          <p className={`uppercase tracking-widest text-xs font-medium ${textMuted} mb-2`}>Deuda Activa</p>
+          <h2 className="text-[40px] font-semibold text-[#1E293B] dark:text-[#F9FAFB] tracking-tighter leading-none"><AnimatedCounter value={metricas.deuda} /></h2>
         </div>
       </div>
 
@@ -464,10 +488,10 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
                 <circle cx="60" cy="60" r={chartData.r} fill="transparent" stroke={isDarkMode ? '#FFFFFF' : '#1E293B'} strokeWidth="12" strokeDasharray={chartData.deuDash} strokeDashoffset={chartData.deuOffset} />
               </svg>
             </div>
-            <div className="flex flex-col gap-4 text-sm font-semibold">
-              <div className="flex items-center gap-3"><span className="w-3 h-3 rounded-full bg-[#10B981]"></span> <span className={textSecondary}>Ingresos</span> <span className="text-[#1E293B] dark:text-[#F9FAFB] ml-auto">{((metricas.ingresos / (metricas.ingresos + metricas.gastos + metricas.deuda)) * 100).toFixed(1)}%</span></div>
-              <div className="flex items-center gap-3"><span className="w-3 h-3 rounded-full bg-[#F43F5E]"></span> <span className={textSecondary}>Gastos</span> <span className="text-[#1E293B] dark:text-[#F9FAFB] ml-auto">{((metricas.gastos / (metricas.ingresos + metricas.gastos + metricas.deuda)) * 100).toFixed(1)}%</span></div>
-              <div className="flex items-center gap-3"><span className={`w-3 h-3 rounded-full ${isDarkMode ? 'bg-white' : 'bg-[#1E293B]'}`}></span> <span className={textSecondary}>Deuda Activa</span> <span className="text-[#1E293B] dark:text-[#F9FAFB] ml-auto">{((metricas.deuda / (metricas.ingresos + metricas.gastos + metricas.deuda)) * 100).toFixed(1)}%</span></div>
+            <div className="flex flex-col gap-4 text-sm font-medium">
+              <div className="flex items-center gap-3"><span className="w-3 h-3 rounded-full bg-[#10B981]"></span> <span className={textSecondary}>Ingresos</span> <span className="text-[#1E293B] dark:text-[#F9FAFB] ml-auto font-semibold">{((metricas.ingresos / (metricas.ingresos + metricas.gastos + metricas.deuda)) * 100).toFixed(1)}%</span></div>
+              <div className="flex items-center gap-3"><span className="w-3 h-3 rounded-full bg-[#F43F5E]"></span> <span className={textSecondary}>Gastos</span> <span className="text-[#1E293B] dark:text-[#F9FAFB] ml-auto font-semibold">{((metricas.gastos / (metricas.ingresos + metricas.gastos + metricas.deuda)) * 100).toFixed(1)}%</span></div>
+              <div className="flex items-center gap-3"><span className={`w-3 h-3 rounded-full ${isDarkMode ? 'bg-white' : 'bg-[#1E293B]'}`}></span> <span className={textSecondary}>Deuda Activa</span> <span className="text-[#1E293B] dark:text-[#F9FAFB] ml-auto font-semibold">{((metricas.deuda / (metricas.ingresos + metricas.gastos + metricas.deuda)) * 100).toFixed(1)}%</span></div>
             </div>
           </div>
         ) : (
@@ -478,7 +502,7 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
       {/* TABLA DE CUENTAS */}
       <div className={`${cardClass} overflow-hidden`}>
         <div className="p-6 md:px-8 border-b border-[#E2E8F0] dark:border-[#374151] flex flex-col md:flex-row justify-between items-center gap-4">
-          <h2 className="text-xl font-bold tracking-tight">Directorio de Cuentas</h2>
+          <h2 className="text-lg font-semibold tracking-tight">Directorio de Cuentas</h2>
           <div className="flex gap-3 w-full md:w-auto relative">
             <input type="month" value={filterMonth} onChange={(e) => setFilterMonth(e.target.value)} className={`px-4 py-2.5 rounded-[14px] text-sm outline-none transition-all border font-medium ${isDarkMode ? 'bg-[#111827] border-[#374151] text-[#F9FAFB] focus:border-[#6366F1]' : 'bg-white border-[#E2E8F0] focus:border-[#6366F1] shadow-sm'}`} />
             <div className="relative flex-1 md:w-64">
@@ -495,9 +519,9 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
             <table className="w-full text-left border-collapse min-w-[800px]">
               <thead>
                 <tr className="border-b border-[#E2E8F0] dark:border-[#374151] bg-[#F4F7FB]/50 dark:bg-[#111827]/50">
-                  <th className={`px-8 py-4 text-[11px] font-bold uppercase tracking-widest ${textMuted}`}>Registro / Categoría</th>
-                  <th className={`px-8 py-4 text-[11px] font-bold uppercase tracking-widest ${textMuted}`}>Balance</th>
-                  <th className={`px-8 py-4 text-[11px] font-bold uppercase tracking-widest ${textMuted} text-right`}>Acciones</th>
+                  <th className={`px-8 py-4 text-[11px] font-medium uppercase tracking-widest ${textMuted}`}>Registro / Categoría</th>
+                  <th className={`px-8 py-4 text-[11px] font-medium uppercase tracking-widest ${textMuted}`}>Balance</th>
+                  <th className={`px-8 py-4 text-[11px] font-medium uppercase tracking-widest ${textMuted} text-right`}>Acciones</th>
                 </tr>
               </thead>
               <tbody>
@@ -511,10 +535,10 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
                      if(t.tipo === 'Gasto' || t.tipo === 'Préstamo') balanceCuenta -= t.monto;
                   });
 
-                  let colorSaldo = "text-[#10B981]"; // Positivo normal (verde)
+                  let colorSaldo = "text-[#10B981]"; 
                   if (balanceCuenta === 0) colorSaldo = "text-[#10B981]";
-                  else if (isLoan) colorSaldo = isDarkMode ? "text-[#D1D5DB]" : "text-[#1E293B]"; // Préstamos o deudas (neutro)
-                  else if (balanceCuenta < 0) colorSaldo = "text-[#F43F5E]"; // Gastos sobrepasados (rojo)
+                  else if (isLoan) colorSaldo = isDarkMode ? "text-[#D1D5DB]" : "text-[#1E293B]"; 
+                  else if (balanceCuenta < 0) colorSaldo = "text-[#F43F5E]"; 
 
                   const txFiltradas = filterMonth ? txs.filter(t => t.fecha.startsWith(filterMonth)) : txs;
                   if (filterMonth && txFiltradas.length === 0) return null;
@@ -523,11 +547,11 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
                     <React.Fragment key={cuenta.id}>
                       <tr className="border-b border-[#E2E8F0] dark:border-[#374151] hover:bg-white dark:hover:bg-[#273449] transition-all duration-200 group">
                         <td className="px-8 py-6">
-                          <div className={`text-[10px] font-bold tracking-widest ${textMuted} mb-1 opacity-70`}>ID {cuenta.id}</div>
-                          <div className="font-bold text-base">{cuenta.nombre}</div>
+                          <div className={`text-[10px] font-medium tracking-widest ${textMuted} mb-1 opacity-70`}>ID {cuenta.id}</div>
+                          <div className="font-medium text-base">{cuenta.nombre}</div>
                         </td>
-                        <td className={`px-8 py-6 font-extrabold text-xl tracking-tight ${colorSaldo}`}>
-                          {formatMoney(Math.abs(balanceCuenta))} {balanceCuenta < 0 && isLoan ? '(Te deben)' : ''}
+                        <td className={`px-8 py-6 font-semibold text-xl tracking-tight ${colorSaldo}`}>
+                          {formatMoney(Math.abs(balanceCuenta))}
                         </td>
                         <td className="px-8 py-6 flex justify-end gap-2">
                           <button onClick={() => toggleRow(cuenta.id)} className={`${iconBtnClass} bg-[#F4F7FB] dark:bg-[#111827] ${textSecondary} hover:text-[#6366F1] dark:hover:text-indigo-400`}><IconEye /></button>
@@ -551,7 +575,6 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
                                         let label = t.tipo;
                                         if (t.concepto && t.concepto.includes("[Préstamo Otorgado]")) label = "Préstamo";
                                         
-                                        // Badges de colores
                                         let badgeClass = "bg-[#E2E8F0] text-[#64748B] dark:bg-[#374151] dark:text-[#D1D5DB]";
                                         if (label === 'Ingreso' || label === 'Abono') badgeClass = "bg-[#10B981]/10 text-[#10B981] dark:bg-[#10B981]/20";
                                         if (label === 'Gasto') badgeClass = "bg-[#F43F5E]/10 text-[#F43F5E] dark:bg-[#F43F5E]/20";
@@ -561,17 +584,17 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
                                           <tr key={t.id} className="border-b border-dashed border-[#E2E8F0] dark:border-[#374151] last:border-0 hover:bg-white/50 dark:hover:bg-[#1F2937]/50 transition-colors">
                                             <td className={`py-4 ${textSecondary} w-32 font-medium`}>{new Date(t.fecha).toLocaleDateString()}</td>
                                             <td className="py-4 w-32">
-                                              <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${badgeClass}`}>{label}</span>
+                                              <span className={`px-2.5 py-1 rounded-md text-[10px] font-medium uppercase tracking-wider ${badgeClass}`}>{label}</span>
                                             </td>
                                             <td className={`py-4 font-medium ${textSecondary}`}>{t.concepto || "-"}</td>
-                                            <td className="py-4 font-bold text-right text-[#1E293B] dark:text-[#F9FAFB]">{formatMoney(t.monto)}</td>
+                                            <td className="py-4 font-semibold text-right text-[#1E293B] dark:text-[#F9FAFB]">{formatMoney(t.monto)}</td>
                                           </tr>
                                         )
                                       })}
                                     </tbody>
                                   </table>
                                   {!filterMonth && txFiltradas.length > 0 && (
-                                    <button onClick={() => loadMoreTransactions(cuenta.id, cuenta.transacciones.length)} disabled={loadingMore} className={`mt-4 px-5 py-2 text-xs font-bold uppercase tracking-wider rounded-xl bg-white dark:bg-[#1F2937] border border-[#E2E8F0] dark:border-[#374151] ${textSecondary} hover:text-[#6366F1] transition-colors disabled:opacity-50`}>
+                                    <button onClick={() => loadMoreTransactions(cuenta.id, cuenta.transacciones.length)} disabled={loadingMore} className={`mt-4 px-5 py-2 text-xs font-medium uppercase tracking-wider rounded-xl bg-white dark:bg-[#1F2937] border border-[#E2E8F0] dark:border-[#374151] ${textSecondary} hover:text-[#6366F1] transition-colors disabled:opacity-50`}>
                                       {loadingMore ? 'Cargando...' : 'Cargar historial anterior'}
                                     </button>
                                   )}
@@ -590,7 +613,7 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
         </div>
       </div>
 
-      {isModalOpen && <MovementModal token={token} cuentas={cuentas} isDarkMode={isDarkMode} onClose={() => setIsModalOpen(false)} onSuccess={() => { setIsModalOpen(false); fetchDashboard(); }} showToast={showToast} />}
+      {isModalOpen && <MovementModal token={token} cuentas={cuentas} isDarkMode={isDarkMode} onClose={() => setIsModalOpen(false)} onSuccess={(refundData) => { setIsModalOpen(false); fetchDashboard(); if (refundData) { setRefundModal({ isOpen: true, targetId: refundData.targetId, targetName: refundData.targetName, options: cuentas.filter(c => c.id !== refundData.targetId), selectedId: '', monto: refundData.monto, fecha: refundData.fecha }); } }} showToast={showToast} />}
 
       {/* FAB BTN */}
       <button onClick={() => setIsModalOpen(true)} className="fixed bottom-10 right-10 w-16 h-16 rounded-[24px] bg-[#6366F1] text-white flex items-center justify-center hover:scale-105 active:scale-95 transition-all z-40 shadow-[0_8px_30px_rgba(99,102,241,0.4)]">
@@ -601,11 +624,11 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
       {deleteModal.isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0B1120]/60 backdrop-blur-md">
           <div className={`w-full max-w-md p-8 rounded-[32px] shadow-2xl border ${isDarkMode ? 'bg-[#1F2937] border-[#374151]' : 'bg-white border-[#E2E8F0]'}`}>
-            <h3 className="text-xl font-bold mb-2 text-center">Eliminar cuenta</h3>
+            <h3 className="text-xl font-semibold mb-2 text-center">Eliminar cuenta</h3>
             <p className={`text-sm font-medium ${textSecondary} mb-8 text-center`}>¿Seguro que deseas eliminar <strong>{deleteModal.name}</strong> y todo su historial? No podrás deshacerlo.</p>
             <div className="flex gap-4">
-              <button onClick={() => setDeleteModal({ isOpen: false, id: null, name: '' })} className={`flex-1 py-3.5 rounded-[16px] font-semibold bg-[#F4F7FB] dark:bg-[#111827] ${textSecondary} hover:bg-[#E2E8F0] dark:hover:bg-[#374151] transition-colors`}>Cancelar</button>
-              <button onClick={confirmDelete} className="flex-1 py-3.5 rounded-[16px] font-bold bg-[#F43F5E] text-white shadow-[0_8px_20px_rgba(244,63,94,0.25)] hover:bg-rose-600 transition-colors">Eliminar</button>
+              <button onClick={() => setDeleteModal({ isOpen: false, id: null, name: '' })} className={`flex-1 py-3.5 rounded-[16px] font-medium bg-[#F4F7FB] dark:bg-[#111827] ${textSecondary} hover:bg-[#E2E8F0] dark:hover:bg-[#374151] transition-colors`}>Cancelar</button>
+              <button onClick={confirmDelete} className="flex-1 py-3.5 rounded-[16px] font-medium bg-[#F43F5E] text-white shadow-[0_8px_20px_rgba(244,63,94,0.25)] hover:bg-rose-600 transition-colors">Eliminar</button>
             </div>
           </div>
         </div>
@@ -615,13 +638,31 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
       {editModal.isOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0B1120]/60 backdrop-blur-md">
           <div className={`w-full max-w-md p-8 rounded-[32px] shadow-2xl border ${isDarkMode ? 'bg-[#1F2937] border-[#374151]' : 'bg-white border-[#E2E8F0]'}`}>
-            <h3 className="text-xl font-bold mb-6 text-center">Renombrar cuenta</h3>
-            <input type="text" value={editModal.newName} onChange={(e) => setEditModal(prev => ({ ...prev, newName: e.target.value }))} className={`w-full px-5 py-4 rounded-[20px] mb-8 outline-none border font-medium transition-all ${isDarkMode ? 'bg-[#111827] border-[#374151] focus:border-[#6366F1]' : 'bg-[#F4F7FB] border-[#E2E8F0] focus:border-[#6366F1] focus:bg-white'}`} />
+            <h3 className="text-xl font-semibold mb-6 text-center">Renombrar cuenta</h3>
+            <input type="text" value={editModal.newName} onChange={(e) => setEditModal(prev => ({ ...prev, newName: e.target.value }))} className={`w-full px-5 py-4 rounded-[20px] mb-8 outline-none border font-medium transition-all ${isDarkMode ? 'bg-[#111827] border-[#374151] focus:border-[#6366F1] text-white' : 'bg-[#F4F7FB] border-[#E2E8F0] focus:border-[#6366F1] focus:bg-white'}`} />
             <div className="flex gap-4">
-              <button onClick={() => setEditModal({ isOpen: false, id: null, name: '', newName: '' })} className={`flex-1 py-3.5 rounded-[16px] font-semibold bg-[#F4F7FB] dark:bg-[#111827] ${textSecondary} transition-colors`}>Cancelar</button>
-              <button onClick={confirmEdit} className="flex-1 py-3.5 rounded-[16px] font-bold bg-[#6366F1] text-white shadow-[0_8px_20px_rgba(99,102,241,0.25)] transition-colors">Guardar</button>
+              <button onClick={() => setEditModal({ isOpen: false, id: null, name: '', newName: '' })} className={`flex-1 py-3.5 rounded-[16px] font-medium bg-[#F4F7FB] dark:bg-[#111827] ${textSecondary} transition-colors`}>Cancelar</button>
+              <button onClick={confirmEdit} className="flex-1 py-3.5 rounded-[16px] font-medium bg-[#6366F1] text-white shadow-[0_8px_20px_rgba(99,102,241,0.25)] transition-colors">Guardar</button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* MODAL REEMBOLSO */}
+      {refundModal.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0B1120]/60 backdrop-blur-md">
+          <form onSubmit={handleRefundSubmit} className={`w-full max-w-md p-8 rounded-[32px] shadow-2xl border ${isDarkMode ? 'bg-[#1F2937] border-[#374151]' : 'bg-white border-[#E2E8F0]'}`}>
+            <h3 className="text-xl font-semibold mb-2 text-center">Devolver capital</h3>
+            <p className={`text-sm font-medium ${textSecondary} mb-8 text-center`}>Elige la cuenta destino para retornar el pago de <strong>{refundModal.targetName}</strong>.</p>
+            <select required value={refundModal.selectedId} onChange={(e) => setRefundModal(prev => ({ ...prev, selectedId: e.target.value }))} className={`w-full px-5 py-4 rounded-[20px] mb-8 outline-none border font-medium cursor-pointer ${isDarkMode ? 'bg-[#111827] border-[#374151] text-[#F9FAFB]' : 'bg-[#F4F7FB] border-[#E2E8F0]'}`}>
+              <option value="" disabled>-- Elige destino --</option>
+              {refundModal.options.map(o => <option key={o.id} value={o.id}>{o.nombre}</option>)}
+            </select>
+            <div className="flex flex-col gap-3">
+              <button type="submit" className="w-full py-3.5 rounded-[16px] font-medium bg-[#10B981] text-white shadow-[0_8px_20px_rgba(16,185,129,0.25)] transition-colors">Confirmar devolución</button>
+              <button type="button" onClick={() => setRefundModal(prev => ({ ...prev, isOpen: false }))} className={`w-full py-3.5 rounded-[16px] font-medium ${textSecondary} hover:bg-[#F4F7FB] dark:hover:bg-[#111827] transition-colors`}>Dejar como efectivo (Saltar)</button>
+            </div>
+          </form>
         </div>
       )}
     </div>
@@ -629,7 +670,7 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
 }
 
 // ==========================================
-// SOLUCIÓN OBSERVACIÓN 3.2: MOVEMENT MODAL REFACTORIZADO
+// SOLUCIÓN: MOVEMENT MODAL Y ENTRADA DE TEXTO
 // ==========================================
 function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToast }) {
   const [tipo, setTipo] = useState('Ingreso');
@@ -637,21 +678,35 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
   const [nombreNuevo, setNombreNuevo] = useState('');
   const [cuentaId, setCuentaId] = useState('');
   const [origenId, setOrigenId] = useState('');
+  
+  // Aquí se maneja el formato en tiempo real
   const [monto, setMonto] = useState('');
+  
   const [fecha, setFecha] = useState(new Date().toISOString().split('T')[0]);
   const [categoria, setCategoria] = useState('General');
   const [concepto, setConcepto] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // Formateador en vivo
+  const handleMontoChange = (e) => {
+    const rawValue = e.target.value.replace(/[^0-9]/g, '');
+    if (!rawValue) {
+      setMonto('');
+      return;
+    }
+    setMonto(formatMoney(parseInt(rawValue, 10)));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const finalMonto = parseFloat(monto.replace(/[^0-9.]/g, ''));
+    // Extraemos únicamente los números del formato "$16,000" para procesar el float
+    const finalMonto = parseFloat(monto.replace(/[^0-9]/g, ''));
     if (!finalMonto || isNaN(finalMonto)) return showToast("Monto inválido", "error");
 
     setLoading(true);
 
     try {
-      // ==== FLUJO 1: TRANSFERENCIA (Mover dinero entre mis cuentas) ====
+      // ==== FLUJO TRANSFERENCIA Pura ====
       if (tipo === 'Transferencia') {
         if (!origenId || !cuentaId) {
           setLoading(false); return showToast("Selecciona origen y destino", "error");
@@ -673,11 +728,11 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
           body: JSON.stringify({ cuentaId: Number(cuentaId), tipo: "Ingreso", monto: finalMonto, concepto: `[Transferencia] Recibido de ${origenName}`, fecha: fecha ? new Date(fecha + "T12:00:00").toISOString() : new Date().toISOString() }) 
         });
 
-        onSuccess();
+        onSuccess(null);
         return;
       }
 
-      // ==== FLUJO 2: INGRESO, GASTO, O PRÉSTAMO ====
+      // ==== FLUJO: INGRESO, GASTO, PRÉSTAMO ====
       let targetId = cuentaId;
       let targetName = "";
 
@@ -692,7 +747,6 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
         targetName = cuentas.find(c => c.id === Number(cuentaId))?.nombre || "Cuenta";
       }
 
-      // Registro el movimiento principal
       const conceptoFinal = tipo === "Préstamo" ? concepto : (categoria !== "General" ? `[${categoria}] ${concepto}`.trim() : concepto);
       
       await fetch(`${API}/movimientos`, { 
@@ -700,7 +754,6 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
         body: JSON.stringify({ cuentaId: Number(targetId), tipo, monto: finalMonto, concepto: conceptoFinal, fecha: fecha ? new Date(fecha + "T12:00:00").toISOString() : new Date().toISOString() }) 
       });
 
-      // Si prestaste dinero y elegiste descontarlo de tu salario (OrigenId configurado)
       if (tipo === 'Préstamo' && origenId) {
         await fetch(`${API}/movimientos`, { 
           method: 'POST', headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`}, 
@@ -708,7 +761,16 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
         });
       }
 
-      onSuccess();
+      // Si fue un abono a una cuenta de préstamo, activamos el reembolso hacia nuestro banco
+      let refundObject = null;
+      if (tipo === "Ingreso") {
+        const targetCuenta = cuentas.find(c => c.id === Number(targetId));
+        if (targetCuenta?.transacciones?.some(t => t.tipo === "Préstamo" && (!t.concepto || !t.concepto.includes("[Préstamo Otorgado]")))) {
+          refundObject = { targetId, targetName, monto: finalMonto, fecha };
+        }
+      }
+      
+      onSuccess(refundObject);
     } catch (error) { 
       showToast("Error al registrar movimiento", "error"); 
     } finally { 
@@ -723,7 +785,7 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0B1120]/60 backdrop-blur-md overflow-y-auto">
       <div className={`w-full max-w-md p-8 rounded-[32px] shadow-2xl my-8 border animate-in zoom-in-95 ${isDarkMode ? 'bg-[#1F2937] border-[#374151]' : 'bg-[#F7F9FC] border-[#E2E8F0]'}`}>
         <div className="flex justify-between items-center mb-8">
-          <h2 className="text-2xl font-extrabold tracking-tight">Registro</h2>
+          <h2 className="text-2xl font-semibold tracking-tight">Registro</h2>
           <button onClick={onClose} className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${textMuted} hover:bg-[#E2E8F0] dark:hover:bg-[#374151] transition-colors`}>✕</button>
         </div>
 
@@ -732,7 +794,7 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
             {['Ingreso', 'Gasto', 'Transferencia', 'Préstamo'].map(t => (
               <button 
                 key={t} type="button" onClick={() => setTipo(t)} 
-                className={`flex-1 min-w-[70px] py-3 text-[11px] font-bold uppercase tracking-wider rounded-[16px] transition-all ${tipo === t ? 'bg-white dark:bg-[#1F2937] text-[#1E293B] dark:text-white shadow-sm' : `${textMuted} hover:text-[#1E293B] dark:hover:text-white`}`}
+                className={`flex-1 min-w-[70px] py-3 text-[11px] font-medium uppercase tracking-wider rounded-[16px] transition-all ${tipo === t ? 'bg-white dark:bg-[#1F2937] text-[#1E293B] dark:text-white shadow-sm' : `${textMuted} hover:text-[#1E293B] dark:hover:text-white`}`}
               >
                 {t === 'Transferencia' ? 'Transf.' : t}
               </button>
@@ -741,12 +803,12 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
 
           {tipo === 'Transferencia' ? (
             <div className={`p-5 rounded-[20px] border mb-4 ${isDarkMode ? 'bg-[#111827] border-[#374151]' : 'bg-white border-[#E2E8F0]'}`}>
-              <label className={`block text-xs font-bold ${textMuted} uppercase tracking-widest mb-2`}>Cuenta Origen (Descuento)</label>
+              <label className={`block text-xs font-medium ${textMuted} uppercase tracking-widest mb-2`}>Cuenta Origen (Descuento)</label>
               <select required value={origenId} onChange={e => setOrigenId(e.target.value)} className={`${inputClass} mb-4`}>
                 <option value="" disabled>-- Selecciona de dónde sale --</option>
                 {cuentas.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
               </select>
-              <label className={`block text-xs font-bold ${textMuted} uppercase tracking-widest mb-2`}>Cuenta Destino (Ingreso)</label>
+              <label className={`block text-xs font-medium ${textMuted} uppercase tracking-widest mb-2`}>Cuenta Destino (Ingreso)</label>
               <select required value={cuentaId} onChange={e => setCuentaId(e.target.value)} className={inputClass}>
                 <option value="" disabled>-- Selecciona a dónde llega --</option>
                 {cuentas.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
@@ -771,13 +833,14 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
           )}
 
           <div className="flex gap-4">
-            <input type="text" placeholder="$ Monto" required value={monto} onChange={e => setMonto(e.target.value)} className={inputClass} />
+            {/* Input monetario con máscara en tiempo real */}
+            <input type="text" placeholder="$0" required value={monto} onChange={handleMontoChange} className={inputClass} />
             <input type="date" required value={fecha} onChange={e => setFecha(e.target.value)} className={inputClass} />
           </div>
 
           {tipo === 'Préstamo' && (
             <div className={`p-5 rounded-[20px] border mt-2 ${isDarkMode ? 'bg-[#111827] border-[#374151]' : 'bg-white border-[#E2E8F0]'}`}>
-              <label className={`block text-[11px] font-bold ${textMuted} uppercase tracking-widest mb-2`}>¿Descontar de alguna cuenta tuya?</label>
+              <label className={`block text-[11px] font-medium ${textMuted} uppercase tracking-widest mb-2`}>¿Descontar de alguna cuenta tuya?</label>
               <select value={origenId} onChange={e => setOrigenId(e.target.value)} className={`${inputClass} !py-3`}>
                 <option value="">No descontar (Solo registrar la deuda)</option>
                 {cuentas.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
@@ -799,7 +862,7 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
 
           <input type="text" placeholder="Concepto o descripción (opcional)" value={concepto} onChange={e => setConcepto(e.target.value)} className={inputClass} />
 
-          <button type="submit" disabled={loading} className={`w-full mt-4 py-4 rounded-[20px] font-bold tracking-wide text-white transition-all active:scale-[0.98] ${loading ? 'opacity-50' : 'bg-[#6366F1] hover:bg-indigo-500 shadow-[0_8px_20px_rgba(99,102,241,0.25)]'}`}>
+          <button type="submit" disabled={loading} className={`w-full mt-4 py-4 rounded-[20px] font-medium tracking-wide text-white transition-all active:scale-[0.98] ${loading ? 'opacity-50' : 'bg-[#6366F1] hover:bg-indigo-500 shadow-[0_8px_20px_rgba(99,102,241,0.25)]'}`}>
             {loading ? 'Procesando...' : (tipo === 'Transferencia' ? 'Realizar Transferencia' : 'Confirmar Movimiento')}
           </button>
         </form>
