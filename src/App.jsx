@@ -99,9 +99,11 @@ export default function App() {
     }
   }, [isDarkMode]);
 
+  // CORRECCIÓN PDF: Carga secuencial para evitar race condition
   useEffect(() => {
-    loadScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js");
-    loadScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js");
+    loadScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js").then(() => {
+      loadScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js");
+    });
   }, []);
 
   const showToast = (msg, type = 'info') => {
@@ -363,11 +365,18 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
     link.click();
   };
 
+  // CORRECCIÓN PDF: Validación de seguridad
   const generarPDF = (cuenta) => {
     const windowJsPDF = window.jspdf?.jsPDF;
     if (!windowJsPDF) return showToast("Preparando PDF...", "info");
 
     const doc = new windowJsPDF();
+    
+    // Verificamos si el plugin autoTable ya está adjunto
+    if (typeof doc.autoTable !== 'function') {
+        return showToast("Cargando complementos del PDF, intenta de nuevo...", "info");
+    }
+
     doc.setFont("helvetica", "bold"); doc.setFontSize(18); doc.text("Estado de Cuenta", 14, 20); 
     doc.setFont("helvetica", "normal"); doc.setFontSize(12); doc.text(`Registro: ${cuenta.nombre}`, 14, 28);
     
@@ -473,7 +482,7 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
           <h2 className="text-[40px] font-semibold text-[#F43F5E] tracking-tighter leading-none"><AnimatedCounter value={metricas.gastos} /></h2>
         </div>
         <div className={`${cardClass} p-8 flex flex-col items-center justify-center text-center`}>
-          <p className={`uppercase tracking-widest text-xs font-medium ${textMuted} mb-2`}>Deuda Activa</p>
+          <p className={`uppercase tracking-widest text-xs font-medium ${textMuted} mb-2`}>Deuda Activa (A tu favor)</p>
           <h2 className="text-[40px] font-semibold text-[#1E293B] dark:text-[#F9FAFB] tracking-tighter leading-none"><AnimatedCounter value={metricas.deuda} /></h2>
         </div>
       </div>
@@ -699,14 +708,12 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
   const [concepto, setConcepto] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Derivados de Flujo
   const isAbono = tipo === 'Préstamo' && categoria === 'Abono / Pago de deuda';
   const isPrestamoOut = tipo === 'Préstamo' && categoria && !isAbono;
   
   const sourceAccounts = cuentas.filter(c => c.canBeSourceOfFunds);
   const loanAccounts = cuentas.filter(c => c.accountType === 'loan');
 
-  // Solo se resetea la categoría si se cambia el TIPO padre
   const handleTypeChange = (t) => {
     setTipo(t);
     setCategoria('');
@@ -715,7 +722,6 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
     setModo('EXISTING');
   };
 
-  // NUNCA reseteamos montos, fechas, o registros si solo cambia la categoría
   const handleCatChange = (val) => {
     setCategoria(val);
   };
@@ -755,7 +761,6 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
     setLoading(true);
 
     try {
-      // ==== VALIDACIÓN DE SALDOS ====
       if ((tipo === 'Gasto' || isPrestamoOut || tipo === 'Transferencia') && origenId) {
         const acc = cuentas.find(c => c.id === Number(origenId));
         if (acc && acc.balanceCuenta < finalMonto) {
@@ -764,7 +769,6 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
         }
       }
 
-      // ==== FLUJO TRANSFERENCIA ====
       if (tipo === 'Transferencia') {
         if (!origenId || !cuentaId) {
           setLoading(false); return showToast("Selecciona origen y destino", "error");
@@ -790,17 +794,14 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
         return;
       }
 
-      // ==== FLUJO ABONO / PAGO DE DEUDA (Aislado) ====
       if (isAbono) {
         const deudorName = cuentas.find(c => c.id === Number(cuentaId))?.nombre || "Deudor";
         
-        // Sumamos dinero al deudor (lo acerca a 0 su deuda)
         await fetch(`${API}/movimientos`, { 
           method: 'POST', headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`}, 
           body: JSON.stringify({ cuentaId: Number(cuentaId), tipo: "Ingreso", monto: finalMonto, concepto: `[Abono / Pago de deuda] ${concepto}`.trim(), fecha: fecha ? new Date(fecha + "T12:00:00").toISOString() : new Date().toISOString() }) 
         });
 
-        // Ingresamos dinero al banco real
         if (origenId) {
           await fetch(`${API}/movimientos`, { 
             method: 'POST', headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`}, 
@@ -812,7 +813,6 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
         return;
       }
 
-      // ==== FLUJO INGRESOS, GASTOS, PRÉSTAMOS NUEVOS ====
       let targetId = cuentaId;
       let targetName = "";
 
@@ -829,13 +829,11 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
 
       const conceptoFinal = `[${categoria}] ${concepto}`.trim();
       
-      // Registro principal en la cuenta objetivo
       await fetch(`${API}/movimientos`, { 
         method: 'POST', headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`}, 
         body: JSON.stringify({ cuentaId: Number(targetId), tipo, monto: finalMonto, concepto: conceptoFinal, fecha: fecha ? new Date(fecha + "T12:00:00").toISOString() : new Date().toISOString() }) 
       });
 
-      // Descuento en la cuenta de origen si aplica
       if ((isPrestamoOut || tipo === 'Gasto') && origenId) {
         await fetch(`${API}/movimientos`, { 
           method: 'POST', headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`}, 
@@ -865,9 +863,8 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
 
         <form onSubmit={handleSubmit} className="space-y-6">
           
-          {/* TIPO DE ACCIÓN */}
           <div>
-            <label className={labelClass}>Tipo de Acción <span className="text-[#F43F5E] ml-1">•</span></label>
+            <label className={labelClass}>Tipo de Acción</label>
             <div className={`flex gap-1 p-1.5 rounded-[20px] border overflow-x-auto ${isDarkMode ? 'bg-[#111827] border-[#374151]' : 'bg-[#E2E8F0]/50 border-transparent'}`}>
               {['Ingreso', 'Gasto', 'Transferencia', 'Préstamo'].map(t => (
                 <button 
@@ -881,10 +878,9 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
             </div>
           </div>
 
-          {/* CATEGORÍA PRIMERO SI ES PRÉSTAMO */}
           {tipo === 'Préstamo' && (
             <div>
-              <label className={labelClass}>Categoría <span className="text-[#F43F5E] ml-1">•</span></label>
+              <label className={labelClass}>Categoría</label>
               <select value={categoria} onChange={e => handleCatChange(e.target.value)} className={inputClass}>
                 <option value="" disabled>-- Seleccionar categoría --</option>
                 {getCategorias().map(cat => (
@@ -894,18 +890,17 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
             </div>
           )}
 
-          {/* REGISTRO / DEUDOR / ORIGEN / DESTINO */}
           {tipo === 'Transferencia' ? (
             <div className="space-y-6">
               <div>
-                <label className={labelClass}>Cuenta Origen (Descuento) <span className="text-[#F43F5E] ml-1">•</span></label>
+                <label className={labelClass}>Cuenta Origen (Descuento)</label>
                 <select required value={origenId} onChange={e => setOrigenId(e.target.value)} className={inputClass}>
                   <option value="" disabled>-- Selecciona de dónde sale --</option>
                   {sourceAccounts.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
                 </select>
               </div>
               <div>
-                <label className={labelClass}>Cuenta Destino (Ingreso) <span className="text-[#F43F5E] ml-1">•</span></label>
+                <label className={labelClass}>Cuenta Destino (Ingreso)</label>
                 <select required value={cuentaId} onChange={e => setCuentaId(e.target.value)} className={inputClass}>
                   <option value="" disabled>-- Selecciona a dónde llega --</option>
                   {sourceAccounts.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
@@ -916,7 +911,7 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
             <div className="space-y-6">
               <div>
                 <label className={labelClass}>
-                  {isAbono ? 'Deudor' : tipo === 'Préstamo' ? 'Deudor' : 'Registro o Persona destino'} <span className="text-[#F43F5E] ml-1">•</span>
+                  {isAbono ? 'Deudor' : 'Registro o Persona destino'}
                 </label>
                 
                 {isAbono ? (
@@ -943,7 +938,6 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
                 )}
               </div>
 
-              {/* OPCIONES DE CUENTA ORIGEN/DESTINO (Solo si aplica) */}
               {isAbono && (
                 <div>
                   <label className={labelClass}>¿A qué cuenta regresa el dinero?</label>
@@ -956,7 +950,7 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
 
               {(isPrestamoOut || tipo === 'Gasto') && (
                 <div>
-                  <label className={labelClass}>Cuenta de origen (opcional)</label>
+                  <label className={labelClass}>¿De qué cuenta saldrá el dinero?</label>
                   <select value={origenId} onChange={e => setOrigenId(e.target.value)} className={inputClass}>
                     <option value="">No descontar (solo registrar el movimiento)</option>
                     {sourceAccounts.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
@@ -966,24 +960,22 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
             </div>
           ) : null}
 
-          {/* MONTO Y FECHA */}
           {(tipo !== 'Préstamo' || categoria) && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div>
-                <label className={labelClass}>Monto <span className="text-[#F43F5E] ml-1">•</span></label>
+                <label className={labelClass}>Monto</label>
                 <input type="text" placeholder="$0" required value={monto} onChange={handleMontoChange} className={inputClass} />
               </div>
               <div>
-                <label className={labelClass}>Fecha <span className="text-[#F43F5E] ml-1">•</span></label>
+                <label className={labelClass}>Fecha</label>
                 <input type="date" required value={fecha} onChange={e => setFecha(e.target.value)} className={inputClass} />
               </div>
             </div>
           )}
 
-          {/* CATEGORÍA (Si es Ingreso/Gasto va acá abajo) */}
           {(tipo === 'Ingreso' || tipo === 'Gasto') && (
             <div>
-              <label className={labelClass}>Categoría <span className="text-[#F43F5E] ml-1">•</span></label>
+              <label className={labelClass}>Categoría</label>
               <select value={categoria} onChange={e => handleCatChange(e.target.value)} className={inputClass}>
                 <option value="" disabled>-- Seleccionar categoría --</option>
                 {getCategorias().map(cat => (
@@ -993,10 +985,9 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
             </div>
           )}
 
-          {/* CONCEPTO */}
           {(tipo !== 'Préstamo' || categoria) && tipo !== 'Transferencia' && (
             <div>
-              <label className={labelClass}>Concepto (Opcional)</label>
+              <label className={labelClass}>Concepto</label>
               <textarea 
                 placeholder="Ej. Salario quincenal, Pago de internet..." 
                 value={concepto} 
