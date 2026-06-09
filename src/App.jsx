@@ -269,7 +269,7 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
       const txs = c.transacciones || [];
       
       const isLoan = txs.some(t => t.tipo === "Préstamo" && (!t.concepto || !t.concepto.includes("[Préstamo Otorgado]")));
-      const hasIngreso = txs.some(t => t.tipo === "Ingreso" || t.tipo === "Abono");
+      const hasIngreso = txs.some(t => t.tipo === "Ingreso" && (!t.concepto || !t.concepto.includes("[Abono / Pago de deuda]")));
       
       let accountType = "asset"; 
       if (isLoan) accountType = "loan"; 
@@ -462,7 +462,7 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
         </div>
       </header>
 
-      {/* MÉTRICAS */}
+      {/* MÉTRICAS (CENTRADAS) */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div className={`${cardClass} p-8 flex flex-col items-center justify-center text-center`}>
           <p className={`uppercase tracking-widest text-xs font-medium ${textMuted} mb-2`}>Ingresos (Mes)</p>
@@ -473,7 +473,7 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
           <h2 className="text-[40px] font-semibold text-[#F43F5E] tracking-tighter leading-none"><AnimatedCounter value={metricas.gastos} /></h2>
         </div>
         <div className={`${cardClass} p-8 flex flex-col items-center justify-center text-center`}>
-          <p className={`uppercase tracking-widest text-xs font-medium ${textMuted} mb-2`}>Deuda Activa (A tu favor)</p>
+          <p className={`uppercase tracking-widest text-xs font-medium ${textMuted} mb-2`}>Deuda Activa</p>
           <h2 className="text-[40px] font-semibold text-[#1E293B] dark:text-[#F9FAFB] tracking-tighter leading-none"><AnimatedCounter value={metricas.deuda} /></h2>
         </div>
       </div>
@@ -521,7 +521,6 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
             <table className="w-full text-left border-collapse min-w-[900px]">
               <thead>
                 <tr className="border-b border-[#E2E8F0] dark:border-[#374151] bg-[#F4F7FB]/50 dark:bg-[#111827]/50">
-                  {/* AJUSTE DE COLUMNAS PARA ALINEACIÓN PERFECTA */}
                   <th className={`w-[30%] px-8 py-4 text-[11px] font-medium uppercase tracking-widest ${textMuted} text-left`}>Registro</th>
                   <th className={`w-[20%] px-8 py-4 text-[11px] font-medium uppercase tracking-widest ${textMuted} text-center`}>Tipo</th>
                   <th className={`w-[25%] px-8 py-4 text-[11px] font-medium uppercase tracking-widest ${textMuted} text-center`}>Balance</th>
@@ -576,55 +575,65 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
                         </td>
                       </tr>
 
-                      {/* --- SECCIÓN EXPANDIDA: Filas de detalle alineadas a la izquierda (Legibilidad total) --- */}
-                      
-                      {isRowOpen && txFiltradas.length === 0 && (
-                        <tr className="bg-[#F8FAFC] dark:bg-[#111827] border-b border-[#E2E8F0] dark:border-[#374151] animate-in fade-in duration-300">
-                          <td colSpan="4" className={`px-8 py-6 text-center text-sm font-medium ${textSecondary}`}>
-                            Sin movimientos en este periodo.
-                          </td>
-                        </tr>
-                      )}
+                      {/* --- SECCIÓN EXPANDIDA: TARJETAS (ESTILO SAAS) --- */}
+                      {isRowOpen && (
+                        <tr>
+                          <td colSpan="4" className="p-0 bg-[#F8FAFC] dark:bg-[#0B1120]/40 border-b border-[#E2E8F0] dark:border-[#374151]">
+                            <div className="p-6 md:p-8 animate-in fade-in slide-in-from-top-2 duration-300">
+                              <h4 className={`text-xs font-semibold uppercase tracking-widest ${textMuted} mb-6 ml-2`}>Historial de movimientos</h4>
+                              
+                              {txFiltradas.length === 0 ? (
+                                <p className={`text-sm font-medium ${textSecondary} ml-2`}>Sin movimientos en este periodo.</p>
+                              ) : (
+                                <div className="flex flex-col gap-4">
+                                  {txFiltradas.map((t) => {
+                                    let label = t.tipo;
+                                    if (t.concepto && t.concepto.includes("[Préstamo Otorgado]")) label = "Préstamo";
+                                    if (t.concepto && t.concepto.includes("[Abono / Pago de deuda]")) label = "Abono / Pago de deuda";
+                                    
+                                    let dotClass = "bg-[#64748B]";
+                                    if (label === 'Ingreso' || label === 'Abono / Pago de deuda') dotClass = "bg-[#10B981]";
+                                    if (label === 'Gasto') dotClass = "bg-[#F43F5E]";
+                                    if (label === 'Préstamo') dotClass = "bg-[#6366F1]";
 
-                      {isRowOpen && txFiltradas.map((t, idx) => {
-                        let label = t.tipo;
-                        if (t.concepto && t.concepto.includes("[Préstamo Otorgado]")) label = "Préstamo";
-                        
-                        let badgeClass = "bg-[#E2E8F0] text-[#64748B] dark:bg-[#374151] dark:text-[#D1D5DB]";
-                        if (label === 'Ingreso' || label === 'Abono') badgeClass = "bg-[#10B981]/10 text-[#10B981] dark:bg-[#10B981]/20";
-                        if (label === 'Gasto') badgeClass = "bg-[#F43F5E]/10 text-[#F43F5E] dark:bg-[#F43F5E]/20";
-                        if (label === 'Préstamo') badgeClass = "bg-[#6366F1]/10 text-[#6366F1] dark:bg-[#6366F1]/20";
+                                    return (
+                                      <div key={t.id} className={`p-6 rounded-[24px] border ${isDarkMode ? 'bg-[#1F2937] border-[#374151]' : 'bg-white border-[#E2E8F0]'} shadow-sm hover:shadow-md transition-shadow flex flex-col gap-4`}>
+                                        
+                                        <div className="flex items-center gap-3">
+                                          <span className={`w-3 h-3 rounded-full ${dotClass}`}></span>
+                                          <span className="text-sm font-semibold text-[#1E293B] dark:text-[#F9FAFB] tracking-wide">{label}</span>
+                                        </div>
+                                        
+                                        <div className="pl-6 flex flex-col gap-3">
+                                          <div className={`text-sm font-medium ${textSecondary} text-left`}>
+                                            {new Date(t.fecha).toLocaleDateString('es-MX')}
+                                          </div>
+                                          
+                                          <div className="flex flex-col gap-1 items-start">
+                                            <span className={`text-[11px] font-medium uppercase tracking-widest ${textMuted}`}>Monto</span>
+                                            <span className="text-base font-semibold text-[#1E293B] dark:text-[#F9FAFB] text-left">{formatMoney(t.monto)}</span>
+                                          </div>
+                                          
+                                          <div className="flex flex-col gap-1 items-start">
+                                            <span className={`text-[11px] font-medium uppercase tracking-widest ${textMuted}`}>Concepto</span>
+                                            <span className="text-sm font-medium text-[#1E293B] dark:text-[#F9FAFB] leading-relaxed text-left">
+                                              {cleanConcepto(t.concepto)}
+                                            </span>
+                                          </div>
+                                        </div>
 
-                        const isLast = idx === txFiltradas.length - 1;
-
-                        return (
-                          <tr key={t.id} className={`bg-[#F8FAFC] dark:bg-[#111827] ${isLast ? 'border-b border-[#E2E8F0] dark:border-[#374151]' : 'border-b border-dashed border-[#E2E8F0] dark:border-[#374151]'} hover:bg-white dark:hover:bg-[#1F2937]/50 transition-colors animate-in fade-in duration-300`}>
-                            {/* Fecha */}
-                            <td className={`px-8 py-4 text-sm font-medium ${textSecondary} text-left`}>
-                              {new Date(t.fecha).toLocaleDateString('es-MX')}
-                            </td>
-                            {/* Tipo (Alineado a la izquierda dentro del bloque) */}
-                            <td className="px-8 py-4 text-left">
-                              <span className={`px-2.5 py-1 rounded-md text-[10px] font-medium uppercase tracking-wider ${badgeClass}`}>{label}</span>
-                            </td>
-                            {/* Monto (Alineado a la izquierda) */}
-                            <td className={`px-8 py-4 text-sm font-semibold text-[#1E293B] dark:text-[#F9FAFB] text-left`}>
-                              {formatMoney(t.monto)}
-                            </td>
-                            {/* Concepto - Sin corchetes y alineado a la izquierda para fácil lectura */}
-                            <td className={`px-8 py-4 text-sm font-medium ${textSecondary} text-left`}>
-                              {cleanConcepto(t.concepto)}
-                            </td>
-                          </tr>
-                        );
-                      })}
-
-                      {isRowOpen && !filterMonth && txFiltradas.length > 0 && (
-                        <tr className="bg-[#F8FAFC] dark:bg-[#111827] border-b border-[#E2E8F0] dark:border-[#374151]">
-                          <td colSpan="4" className="px-8 py-4">
-                            <button onClick={() => loadMoreTransactions(cuenta.id, cuenta.transacciones.length)} disabled={loadingMore} className={`w-full max-w-sm mx-auto block py-3 text-xs font-medium uppercase tracking-wider rounded-[16px] bg-white dark:bg-[#1F2937] border border-[#E2E8F0] dark:border-[#374151] ${textSecondary} hover:text-[#6366F1] transition-colors disabled:opacity-50 shadow-sm hover:shadow-md`}>
-                              {loadingMore ? 'Cargando...' : 'Cargar historial anterior'}
-                            </button>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                              
+                              {!filterMonth && txFiltradas.length > 0 && (
+                                <button onClick={() => loadMoreTransactions(cuenta.id, cuenta.transacciones.length)} disabled={loadingMore} className={`mt-6 w-full max-w-sm mx-auto block py-4 text-xs font-medium uppercase tracking-wider rounded-[20px] bg-white dark:bg-[#1F2937] border border-[#E2E8F0] dark:border-[#374151] ${textSecondary} hover:text-[#6366F1] transition-colors disabled:opacity-50 shadow-sm hover:shadow-md`}>
+                                  {loadingMore ? 'Cargando...' : 'Cargar historial anterior'}
+                                </button>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       )}
@@ -680,23 +689,24 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
 // ==========================================
 function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToast }) {
   const [tipo, setTipo] = useState('Ingreso');
+  const [categoria, setCategoria] = useState('');
   const [modo, setModo] = useState('EXISTING');
   const [nombreNuevo, setNombreNuevo] = useState('');
   const [cuentaId, setCuentaId] = useState('');
-  const [origenId, setOrigenId] = useState(''); // Usado como Origen (gasto) o Destino (abono)
+  const [origenId, setOrigenId] = useState('');
   const [monto, setMonto] = useState('');
   const [fecha, setFecha] = useState(new Date().toISOString().split('T')[0]);
-  const [categoria, setCategoria] = useState('');
   const [concepto, setConcepto] = useState('');
   const [loading, setLoading] = useState(false);
 
+  // Derivados de Flujo
   const isAbono = tipo === 'Préstamo' && categoria === 'Abono / Pago de deuda';
   const isPrestamoOut = tipo === 'Préstamo' && categoria && !isAbono;
   
   const sourceAccounts = cuentas.filter(c => c.canBeSourceOfFunds);
   const loanAccounts = cuentas.filter(c => c.accountType === 'loan');
 
-  // Reset de estados cuando cambia la ruta del flujo
+  // Solo se resetea la categoría si se cambia el TIPO padre
   const handleTypeChange = (t) => {
     setTipo(t);
     setCategoria('');
@@ -705,11 +715,9 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
     setModo('EXISTING');
   };
 
-  const handleCatChange = (c) => {
-    setCategoria(c);
-    setCuentaId('');
-    setOrigenId('');
-    setModo('EXISTING');
+  // NUNCA reseteamos montos, fechas, o registros si solo cambia la categoría
+  const handleCatChange = (val) => {
+    setCategoria(val);
   };
 
   const getCategorias = () => {
@@ -747,12 +755,12 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
     setLoading(true);
 
     try {
-      // ==== VALIDACIÓN DE SALDOS ORIGEN ====
+      // ==== VALIDACIÓN DE SALDOS ====
       if ((tipo === 'Gasto' || isPrestamoOut || tipo === 'Transferencia') && origenId) {
         const acc = cuentas.find(c => c.id === Number(origenId));
         if (acc && acc.balanceCuenta < finalMonto) {
             setLoading(false);
-            return showToast("Saldo insuficiente en la cuenta seleccionada.", "error");
+            return showToast("Saldo insuficiente en la cuenta de origen.", "error");
         }
       }
 
@@ -782,15 +790,17 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
         return;
       }
 
-      // ==== FLUJO ABONO / PAGO DE DEUDA ====
+      // ==== FLUJO ABONO / PAGO DE DEUDA (Aislado) ====
       if (isAbono) {
         const deudorName = cuentas.find(c => c.id === Number(cuentaId))?.nombre || "Deudor";
         
+        // Sumamos dinero al deudor (lo acerca a 0 su deuda)
         await fetch(`${API}/movimientos`, { 
           method: 'POST', headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`}, 
           body: JSON.stringify({ cuentaId: Number(cuentaId), tipo: "Ingreso", monto: finalMonto, concepto: `[Abono / Pago de deuda] ${concepto}`.trim(), fecha: fecha ? new Date(fecha + "T12:00:00").toISOString() : new Date().toISOString() }) 
         });
 
+        // Ingresamos dinero al banco real
         if (origenId) {
           await fetch(`${API}/movimientos`, { 
             method: 'POST', headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`}, 
@@ -802,7 +812,7 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
         return;
       }
 
-      // ==== FLUJO NORMAL (Ingreso, Gasto, Préstamo Outbound) ====
+      // ==== FLUJO INGRESOS, GASTOS, PRÉSTAMOS NUEVOS ====
       let targetId = cuentaId;
       let targetName = "";
 
@@ -819,11 +829,13 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
 
       const conceptoFinal = `[${categoria}] ${concepto}`.trim();
       
+      // Registro principal en la cuenta objetivo
       await fetch(`${API}/movimientos`, { 
         method: 'POST', headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`}, 
         body: JSON.stringify({ cuentaId: Number(targetId), tipo, monto: finalMonto, concepto: conceptoFinal, fecha: fecha ? new Date(fecha + "T12:00:00").toISOString() : new Date().toISOString() }) 
       });
 
+      // Descuento en la cuenta de origen si aplica
       if ((isPrestamoOut || tipo === 'Gasto') && origenId) {
         await fetch(`${API}/movimientos`, { 
           method: 'POST', headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`}, 
@@ -869,7 +881,7 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
             </div>
           </div>
 
-          {/* CATEGORÍA (Se muestra 2do si es PRÉSTAMO) */}
+          {/* CATEGORÍA PRIMERO SI ES PRÉSTAMO */}
           {tipo === 'Préstamo' && (
             <div>
               <label className={labelClass}>Categoría <span className="text-[#F43F5E] ml-1">•</span></label>
@@ -882,7 +894,7 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
             </div>
           )}
 
-          {/* REGISTRO O PERSONA DESTINO */}
+          {/* REGISTRO / DEUDOR / ORIGEN / DESTINO */}
           {tipo === 'Transferencia' ? (
             <div className="space-y-6">
               <div>
@@ -901,32 +913,55 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
               </div>
             </div>
           ) : (tipo !== 'Préstamo' || categoria) ? (
-            <div>
-              <label className={labelClass}>
-                {tipo === 'Préstamo' ? 'Deudor' : 'Registro o Persona destino'} <span className="text-[#F43F5E] ml-1">•</span>
-              </label>
-              
-              {isAbono ? (
-                <select required value={cuentaId} onChange={e => setCuentaId(e.target.value)} className={inputClass}>
-                  <option value="" disabled>-- Seleccionar deudor --</option>
-                  {loanAccounts.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-                </select>
-              ) : (
-                <>
-                  <select value={modo} onChange={(e) => setModo(e.target.value)} className={`${inputClass} mb-4`}>
-                    <option value="EXISTING">Seleccionar registro existente</option>
-                    <option value="NEW">Crear nuevo registro</option>
+            <div className="space-y-6">
+              <div>
+                <label className={labelClass}>
+                  {isAbono ? 'Deudor' : tipo === 'Préstamo' ? 'Deudor' : 'Registro o Persona destino'} <span className="text-[#F43F5E] ml-1">•</span>
+                </label>
+                
+                {isAbono ? (
+                  <select required value={cuentaId} onChange={e => setCuentaId(e.target.value)} className={inputClass}>
+                    <option value="" disabled>-- Seleccionar deudor --</option>
+                    {loanAccounts.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
                   </select>
-
-                  {modo === "NEW" ? (
-                    <input type="text" placeholder="Escribe el nuevo nombre" required value={nombreNuevo} onChange={e => setNombreNuevo(e.target.value)} className={inputClass} />
-                  ) : (
-                    <select required value={cuentaId} onChange={e => setCuentaId(e.target.value)} className={inputClass}>
-                      <option value="" disabled>-- Selecciona el registro --</option>
-                      {cuentas.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                ) : (
+                  <>
+                    <select value={modo} onChange={(e) => setModo(e.target.value)} className={`${inputClass} mb-4`}>
+                      <option value="EXISTING">Seleccionar registro existente</option>
+                      <option value="NEW">Crear nuevo registro</option>
                     </select>
-                  )}
-                </>
+
+                    {modo === "NEW" ? (
+                      <input type="text" placeholder="Escribe el nuevo nombre" required value={nombreNuevo} onChange={e => setNombreNuevo(e.target.value)} className={inputClass} />
+                    ) : (
+                      <select required value={cuentaId} onChange={e => setCuentaId(e.target.value)} className={inputClass}>
+                        <option value="" disabled>-- Selecciona el registro --</option>
+                        {cuentas.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                      </select>
+                    )}
+                  </>
+                )}
+              </div>
+
+              {/* OPCIONES DE CUENTA ORIGEN/DESTINO (Solo si aplica) */}
+              {isAbono && (
+                <div>
+                  <label className={labelClass}>¿A qué cuenta regresa el dinero?</label>
+                  <select value={origenId} onChange={e => setOrigenId(e.target.value)} className={inputClass}>
+                    <option value="">No registrar en otra cuenta</option>
+                    {sourceAccounts.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                  </select>
+                </div>
+              )}
+
+              {(isPrestamoOut || tipo === 'Gasto') && (
+                <div>
+                  <label className={labelClass}>Cuenta de origen (opcional)</label>
+                  <select value={origenId} onChange={e => setOrigenId(e.target.value)} className={inputClass}>
+                    <option value="">No descontar (solo registrar el movimiento)</option>
+                    {sourceAccounts.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                  </select>
+                </div>
               )}
             </div>
           ) : null}
@@ -945,7 +980,7 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
             </div>
           )}
 
-          {/* CATEGORÍA (Si es Ingreso o Gasto se muestra AQUÍ) */}
+          {/* CATEGORÍA (Si es Ingreso/Gasto va acá abajo) */}
           {(tipo === 'Ingreso' || tipo === 'Gasto') && (
             <div>
               <label className={labelClass}>Categoría <span className="text-[#F43F5E] ml-1">•</span></label>
@@ -968,27 +1003,6 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
                 onChange={e => setConcepto(e.target.value)} 
                 className={`${inputClass} resize-none h-24 py-4`} 
               />
-            </div>
-          )}
-
-          {/* OPCIONES AVANZADAS: ORIGEN/DESTINO FONDOS */}
-          {isAbono && (
-            <div className={`p-6 rounded-[24px] border ${isDarkMode ? 'bg-[#111827] border-[#374151]' : 'bg-white border-[#E2E8F0]'}`}>
-              <label className={labelClass}>¿A qué cuenta regresa el dinero? (Opcional)</label>
-              <select value={origenId} onChange={e => setOrigenId(e.target.value)} className={`${inputClass} !py-3`}>
-                <option value="">No registrar en otra cuenta</option>
-                {sourceAccounts.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-              </select>
-            </div>
-          )}
-
-          {(tipo === 'Gasto' || isPrestamoOut) && (
-            <div className={`p-6 rounded-[24px] border ${isDarkMode ? 'bg-[#111827] border-[#374151]' : 'bg-white border-[#E2E8F0]'}`}>
-              <label className={labelClass}>Cuenta de origen (opcional)</label>
-              <select value={origenId} onChange={e => setOrigenId(e.target.value)} className={`${inputClass} !py-3`}>
-                <option value="">No descontar (solo registrar el movimiento)</option>
-                {sourceAccounts.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-              </select>
             </div>
           )}
 
