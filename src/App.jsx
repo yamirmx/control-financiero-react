@@ -112,6 +112,8 @@ export default function App() {
 
   return (
     <div className={`min-h-screen transition-colors duration-300 font-sans antialiased ${isDarkMode ? 'bg-[#111827] text-[#F9FAFB]' : 'bg-[#F4F7FB] text-[#1E293B]'}`}>
+      
+      {/* Sistema de Toasts Premium */}
       {toast.show && (
         <div className={`fixed top-6 right-6 px-6 py-4 rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.12)] z-50 transform transition-all flex items-center gap-3 backdrop-blur-md animate-in slide-in-from-top-5
           ${toast.type === 'success' ? 'bg-[#10B981]/90 text-white' : toast.type === 'error' ? 'bg-[#F43F5E]/90 text-white' : 'bg-[#1E293B]/90 text-white'}`}>
@@ -256,7 +258,7 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
   };
 
   // ==========================================
-  // LÓGICA FINANCIERA (Intacta)
+  // LÓGICA FINANCIERA CORREGIDA Y AISLADA
   // ==========================================
   const metricas = useMemo(() => {
     let ingresos = 0, gastos = 0, deuda = 0;
@@ -299,7 +301,9 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
     return { ingresos, gastos, deuda };
   }, [cuentas]);
 
-  const toggleRow = (id) => setExpandedRows(prev => prev[id] ? {} : { [id]: true });
+  const toggleRow = (id) => {
+    setExpandedRows(prev => prev[id] ? {} : { [id]: true });
+  };
 
   const confirmDelete = async () => {
     try {
@@ -383,7 +387,7 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
     };
   }, [metricas]);
 
-  // Constantes de estilo premium
+  // Constantes de estilo premium adaptadas a Soft UI / Notion
   const cardClass = `rounded-[32px] transition-all border ${isDarkMode ? 'bg-[#1F2937] border-[#374151] shadow-2xl' : 'bg-[#F7F9FC] border-[#E2E8F0] shadow-[0_8px_30px_rgb(0,0,0,0.04)]'}`;
   const iconBtnClass = `w-10 h-10 rounded-[12px] flex items-center justify-center transition-all duration-200 hover:scale-105 active:scale-95`;
   const textMuted = isDarkMode ? 'text-[#9CA3AF]' : 'text-[#64748B]';
@@ -452,7 +456,7 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
         </div>
       </header>
 
-      {/* MÉTRICAS */}
+      {/* MÉTRICAS (CENTRADAS) */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div className={`${cardClass} p-8 flex flex-col items-center justify-center text-center`}>
           <p className={`uppercase tracking-widest text-xs font-medium ${textMuted} mb-2`}>Ingresos (Mes)</p>
@@ -463,7 +467,7 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
           <h2 className="text-[40px] font-semibold text-[#F43F5E] tracking-tighter leading-none"><AnimatedCounter value={metricas.gastos} /></h2>
         </div>
         <div className={`${cardClass} p-8 flex flex-col items-center justify-center text-center`}>
-          <p className={`uppercase tracking-widest text-xs font-medium ${textMuted} mb-2`}>Deuda Activa (A tu favor)</p>
+          <p className={`uppercase tracking-widest text-xs font-medium ${textMuted} mb-2`}>Deuda Activa</p>
           <h2 className="text-[40px] font-semibold text-[#1E293B] dark:text-[#F9FAFB] tracking-tighter leading-none"><AnimatedCounter value={metricas.deuda} /></h2>
         </div>
       </div>
@@ -511,11 +515,9 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
             <table className="w-full text-left border-collapse min-w-[900px]">
               <thead>
                 <tr className="border-b border-[#E2E8F0] dark:border-[#374151] bg-[#F4F7FB]/50 dark:bg-[#111827]/50">
-                  {/* AJUSTE DE COLUMNAS: Distribuido equilibradamente */}
                   <th className={`w-1/4 px-8 py-4 text-[11px] font-medium uppercase tracking-widest ${textMuted}`}>Registro</th>
                   <th className={`w-1/4 px-8 py-4 text-[11px] font-medium uppercase tracking-widest ${textMuted}`}>Tipo</th>
                   <th className={`w-1/4 px-8 py-4 text-[11px] font-medium uppercase tracking-widest ${textMuted}`}>Balance</th>
-                  {/* El encabezado Acciones ahora está centrado visualmente */}
                   <th className={`w-1/4 px-8 py-4 text-[11px] font-medium uppercase tracking-widest ${textMuted} text-center`}>Acciones</th>
                 </tr>
               </thead>
@@ -547,7 +549,6 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
 
                   return (
                     <React.Fragment key={cuenta.id}>
-                      {/* --- FILA PRINCIPAL --- */}
                       <tr className={`border-b border-[#E2E8F0] dark:border-[#374151] hover:bg-white dark:hover:bg-[#273449] transition-all duration-200 group ${isRowOpen ? (isDarkMode ? 'bg-[#273449]' : 'bg-white') : ''}`}>
                         <td className="px-8 py-5">
                           <div className={`text-[10px] font-medium tracking-widest ${textMuted} mb-1 opacity-70`}>ID {cuenta.id}</div>
@@ -561,7 +562,6 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
                         <td className={`px-8 py-5 font-semibold text-xl tracking-tight ${colorSaldo}`}>
                           {formatMoney(Math.abs(balanceCuenta))}
                         </td>
-                        {/* BOTONES CENTRADOS PERFECTAMENTE DENTRO DE SU COLUMNA */}
                         <td className="px-8 py-5">
                           <div className="flex justify-center items-center gap-2">
                             <button onClick={() => toggleRow(cuenta.id)} className={`${iconBtnClass} ${isRowOpen ? 'bg-[#6366F1] text-white' : `bg-[#F4F7FB] dark:bg-[#111827] ${textSecondary} hover:text-[#6366F1] dark:hover:text-indigo-400`}`}>
@@ -575,8 +575,6 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
                         </td>
                       </tr>
 
-                      {/* --- FILAS EXPANDIDAS DE DETALLE (ALINEACIÓN EXACTA CON LA TABLA) --- */}
-                      
                       {isRowOpen && txFiltradas.length === 0 && (
                         <tr className="bg-[#F8FAFC] dark:bg-[#111827] border-b border-[#E2E8F0] dark:border-[#374151] animate-in fade-in duration-300">
                           <td colSpan="4" className={`px-8 py-6 text-center text-sm font-medium ${textSecondary}`}>
@@ -598,19 +596,15 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
 
                         return (
                           <tr key={t.id} className={`bg-[#F8FAFC] dark:bg-[#111827] ${isLast ? 'border-b border-[#E2E8F0] dark:border-[#374151]' : 'border-b border-dashed border-[#E2E8F0] dark:border-[#374151]'} hover:bg-white dark:hover:bg-[#1F2937]/50 transition-colors animate-in fade-in duration-300`}>
-                            {/* Fecha */}
                             <td className={`px-8 py-4 text-sm font-medium ${textSecondary}`}>
                               {new Date(t.fecha).toLocaleDateString('es-MX')}
                             </td>
-                            {/* Tipo */}
                             <td className="px-8 py-4">
                               <span className={`px-2.5 py-1 rounded-md text-[10px] font-medium uppercase tracking-wider ${badgeClass}`}>{label}</span>
                             </td>
-                            {/* Balance */}
                             <td className={`px-8 py-4 text-sm font-semibold text-[#1E293B] dark:text-[#F9FAFB]`}>
                               {formatMoney(t.monto)}
                             </td>
-                            {/* Concepto - Centrado dentro de su columna para mantener el equilibrio visual */}
                             <td className={`px-8 py-4 text-sm font-medium ${textSecondary} text-center`}>
                               {t.concepto || "-"}
                             </td>
@@ -705,9 +699,23 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
   const [monto, setMonto] = useState('');
   
   const [fecha, setFecha] = useState(new Date().toISOString().split('T')[0]);
-  const [categoria, setCategoria] = useState('General');
+  const [categoria, setCategoria] = useState('');
   const [concepto, setConcepto] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // CATEGORÍAS DINÁMICAS
+  const getCategorias = () => {
+    switch (tipo) {
+      case 'Ingreso':
+        return ['Nómina / Salario', 'Comisiones', 'Ventas', 'Bono', 'Pago de deuda', 'Otros ingresos'];
+      case 'Gasto':
+        return ['Comida y despensa', 'Transporte / Gasolina', 'Vivienda y servicios', 'Salud', 'Educación', 'Ocio y entretenimiento', 'Otros gastos'];
+      case 'Préstamo':
+        return ['Préstamo personal', 'Préstamo familiar', 'Préstamo laboral', 'Otro préstamo'];
+      default:
+        return [];
+    }
+  };
 
   const handleMontoChange = (e) => {
     const rawValue = e.target.value.replace(/[^0-9]/g, '');
@@ -720,6 +728,12 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Validación de categoría obligatoria
+    if (tipo !== 'Transferencia' && !categoria) {
+      return showToast("Selecciona una categoría para continuar.", "error");
+    }
+
     const finalMonto = parseFloat(monto.replace(/[^0-9]/g, ''));
     if (!finalMonto || isNaN(finalMonto)) return showToast("Monto inválido", "error");
 
@@ -765,7 +779,7 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
         targetName = cuentas.find(c => c.id === Number(cuentaId))?.nombre || "Cuenta";
       }
 
-      const conceptoFinal = tipo === "Préstamo" ? concepto : (categoria !== "General" ? `[${categoria}] ${concepto}`.trim() : concepto);
+      const conceptoFinal = `[${categoria}] ${concepto}`.trim();
       
       await fetch(`${API}/movimientos`, { 
         method: 'POST', headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`}, 
@@ -796,6 +810,7 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
   };
 
   const inputClass = `w-full px-5 py-4 rounded-[20px] outline-none border font-medium transition-all ${isDarkMode ? 'bg-[#111827] border-[#374151] text-[#F9FAFB] focus:border-[#6366F1]' : 'bg-white border-[#E2E8F0] focus:border-[#6366F1] focus:shadow-[0_0_0_4px_rgba(99,102,241,0.1)]'}`;
+  const labelClass = `block text-[11px] font-semibold uppercase tracking-widest ${isDarkMode ? 'text-[#9CA3AF]' : 'text-[#64748B]'} mb-2 ml-1`;
   const textMuted = isDarkMode ? 'text-[#9CA3AF]' : 'text-[#64748B]';
 
   return (
@@ -803,60 +818,97 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
       <div className={`w-full max-w-md p-8 rounded-[32px] shadow-2xl my-8 border animate-in zoom-in-95 ${isDarkMode ? 'bg-[#1F2937] border-[#374151]' : 'bg-[#F7F9FC] border-[#E2E8F0]'}`}>
         <div className="flex justify-between items-center mb-8">
           <h2 className="text-2xl font-semibold tracking-tight">Registro</h2>
-          <button onClick={onClose} className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${textMuted} hover:bg-[#E2E8F0] dark:hover:bg-[#374151] transition-colors`}>✕</button>
+          <button type="button" onClick={onClose} className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${textMuted} hover:bg-[#E2E8F0] dark:hover:bg-[#374151] transition-colors`}>✕</button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className={`flex gap-1 p-1.5 rounded-[20px] border overflow-x-auto ${isDarkMode ? 'bg-[#111827] border-[#374151]' : 'bg-[#E2E8F0]/50 border-transparent'}`}>
-            {['Ingreso', 'Gasto', 'Transferencia', 'Préstamo'].map(t => (
-              <button 
-                key={t} type="button" onClick={() => setTipo(t)} 
-                className={`flex-1 min-w-[70px] py-3 text-[11px] font-medium uppercase tracking-wider rounded-[16px] transition-all ${tipo === t ? 'bg-white dark:bg-[#1F2937] text-[#1E293B] dark:text-white shadow-sm' : `${textMuted} hover:text-[#1E293B] dark:hover:text-white`}`}
-              >
-                {t === 'Transferencia' ? 'Transf.' : t}
-              </button>
-            ))}
+        <form onSubmit={handleSubmit} className="space-y-5">
+          
+          {/* 1. TIPO DE ACCIÓN */}
+          <div>
+            <label className={labelClass}>Tipo de Acción</label>
+            <div className={`flex gap-1 p-1.5 rounded-[20px] border overflow-x-auto ${isDarkMode ? 'bg-[#111827] border-[#374151]' : 'bg-[#E2E8F0]/50 border-transparent'}`}>
+              {['Ingreso', 'Gasto', 'Transferencia', 'Préstamo'].map(t => (
+                <button 
+                  key={t} type="button" 
+                  onClick={() => { setTipo(t); setCategoria(''); }} 
+                  className={`flex-1 min-w-[70px] py-3 text-[11px] font-medium uppercase tracking-wider rounded-[16px] transition-all ${tipo === t ? 'bg-white dark:bg-[#1F2937] text-[#1E293B] dark:text-white shadow-sm' : `${textMuted} hover:text-[#1E293B] dark:hover:text-white`}`}
+                >
+                  {t === 'Transferencia' ? 'Transf.' : t}
+                </button>
+              ))}
+            </div>
           </div>
 
+          {/* 2. CATEGORÍA (Oculta en Transferencia) */}
+          {tipo !== 'Transferencia' && (
+            <div>
+              <label className={labelClass}>Categoría</label>
+              <select value={categoria} onChange={e => setCategoria(e.target.value)} className={inputClass}>
+                <option value="" disabled>-- Seleccionar categoría --</option>
+                {getCategorias().map(cat => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* 3. MONTO Y FECHA */}
+          <div className="flex gap-4">
+            <div className="flex-1">
+              <label className={labelClass}>Monto</label>
+              <input type="text" placeholder="$0" required value={monto} onChange={handleMontoChange} className={inputClass} />
+            </div>
+            <div className="flex-1">
+              <label className={labelClass}>Fecha</label>
+              <input type="date" required value={fecha} onChange={e => setFecha(e.target.value)} className={inputClass} />
+            </div>
+          </div>
+
+          {/* 4. CONCEPTO */}
+          {tipo !== 'Transferencia' && (
+            <div>
+              <label className={labelClass}>Concepto (Opcional)</label>
+              <input type="text" placeholder="Ej. Quincena, Despensa..." value={concepto} onChange={e => setConcepto(e.target.value)} className={inputClass} />
+            </div>
+          )}
+
+          {/* 5. CUENTA ASOCIADA / TRANSFERENCIA */}
           {tipo === 'Transferencia' ? (
-            <div className={`p-5 rounded-[20px] border mb-4 ${isDarkMode ? 'bg-[#111827] border-[#374151]' : 'bg-white border-[#E2E8F0]'}`}>
-              <label className={`block text-xs font-medium ${textMuted} uppercase tracking-widest mb-2`}>Cuenta Origen (Descuento)</label>
+            <div className={`p-6 rounded-[24px] border ${isDarkMode ? 'bg-[#111827] border-[#374151]' : 'bg-white border-[#E2E8F0]'}`}>
+              <label className={labelClass}>Cuenta Origen (Descuento)</label>
               <select required value={origenId} onChange={e => setOrigenId(e.target.value)} className={`${inputClass} mb-4`}>
                 <option value="" disabled>-- Selecciona de dónde sale --</option>
                 {cuentas.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
               </select>
-              <label className={`block text-xs font-medium ${textMuted} uppercase tracking-widest mb-2`}>Cuenta Destino (Ingreso)</label>
+              <label className={labelClass}>Cuenta Destino (Ingreso)</label>
               <select required value={cuentaId} onChange={e => setCuentaId(e.target.value)} className={inputClass}>
                 <option value="" disabled>-- Selecciona a dónde llega --</option>
                 {cuentas.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
               </select>
             </div>
           ) : (
-            <>
-              <select value={modo} onChange={(e) => setModo(e.target.value)} className={inputClass}>
-                <option value="EXISTING">Seleccionar cuenta existente</option>
-                <option value="NEW">Crear nueva cuenta/persona</option>
+            <div className={`p-6 rounded-[24px] border ${isDarkMode ? 'bg-[#111827] border-[#374151]' : 'bg-white border-[#E2E8F0]'}`}>
+              <label className={labelClass}>Registro o Persona Destino</label>
+              <select value={modo} onChange={(e) => setModo(e.target.value)} className={`${inputClass} mb-4`}>
+                <option value="EXISTING">Seleccionar registro existente</option>
+                <option value="NEW">Crear nuevo registro</option>
               </select>
 
               {modo === "NEW" ? (
-                <input type="text" placeholder="Nombre" required value={nombreNuevo} onChange={e => setNombreNuevo(e.target.value)} className={inputClass} />
+                <input type="text" placeholder="Escribe el nuevo nombre" required value={nombreNuevo} onChange={e => setNombreNuevo(e.target.value)} className={inputClass} />
               ) : (
                 <select required value={cuentaId} onChange={e => setCuentaId(e.target.value)} className={inputClass}>
                   <option value="" disabled>-- Selecciona el registro --</option>
                   {cuentas.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
                 </select>
               )}
-            </>
+            </div>
           )}
 
-          <div className="flex gap-4">
-            <input type="text" placeholder="$0" required value={monto} onChange={handleMontoChange} className={inputClass} />
-            <input type="date" required value={fecha} onChange={e => setFecha(e.target.value)} className={inputClass} />
-          </div>
-
+          {/* OPCIÓN AVANZADA: DESCONTAR DE OTRA CUENTA (Solo en Gasto/Préstamo) */}
           {(tipo === 'Préstamo' || tipo === 'Gasto') && (
-            <div className={`p-5 rounded-[20px] border mt-2 ${isDarkMode ? 'bg-[#111827] border-[#374151]' : 'bg-white border-[#E2E8F0]'}`}>
-              <label className={`block text-[11px] font-medium ${textMuted} uppercase tracking-widest mb-2`}>¿Descontar de alguna cuenta tuya?</label>
+            <div className={`p-6 rounded-[24px] border mt-2 ${isDarkMode ? 'bg-[#111827] border-[#374151]' : 'bg-white border-[#E2E8F0]'}`}>
+              <label className={labelClass}>¿Descontar de alguna cuenta tuya?</label>
               <select value={origenId} onChange={e => setOrigenId(e.target.value)} className={`${inputClass} !py-3`}>
                 <option value="">No descontar (Solo registrar {tipo === 'Préstamo' ? 'la deuda' : 'el gasto'})</option>
                 {cuentas.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
@@ -864,21 +916,7 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
             </div>
           )}
 
-          {(tipo === 'Gasto' || tipo === 'Ingreso') && (
-            <select value={categoria} onChange={e => setCategoria(e.target.value)} className={inputClass}>
-              <option value="General">Categoría: General</option>
-              <option value="Comida">Comida y Despensa</option>
-              <option value="Transporte">Transporte / Gasolina</option>
-              <option value="Vivienda">Vivienda y Servicios</option>
-              <option value="Entretenimiento">Ocio y Entretenimiento</option>
-              <option value="Pago Tarjeta/Deuda">Pago de Deuda</option>
-              <option value="Nómina/Salario">Nómina / Salario</option>
-            </select>
-          )}
-
-          <input type="text" placeholder="Concepto o descripción (opcional)" value={concepto} onChange={e => setConcepto(e.target.value)} className={inputClass} />
-
-          <button type="submit" disabled={loading} className={`w-full mt-4 py-4 rounded-[20px] font-medium tracking-wide text-white transition-all active:scale-[0.98] ${loading ? 'opacity-50' : 'bg-[#6366F1] hover:bg-indigo-500 shadow-[0_8px_20px_rgba(99,102,241,0.25)]'}`}>
+          <button type="submit" disabled={loading} className={`w-full mt-6 py-4 rounded-[20px] font-medium tracking-wide text-white transition-all active:scale-[0.98] ${loading ? 'opacity-50' : 'bg-[#6366F1] hover:bg-indigo-500 shadow-[0_8px_20px_rgba(99,102,241,0.25)]'}`}>
             {loading ? 'Procesando...' : (tipo === 'Transferencia' ? 'Realizar Transferencia' : 'Confirmar Movimiento')}
           </button>
         </form>
