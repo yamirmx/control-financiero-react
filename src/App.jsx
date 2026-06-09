@@ -357,6 +357,46 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
   const cardClass = `rounded-[32px] transition-all border ${isDarkMode ? 'bg-[#111827] border-slate-800 shadow-xl' : 'bg-[#F7F9FC] border-[#E2E8F0] shadow-[0_8px_30px_rgb(0,0,0,0.04)]'}`;
   const iconBtnClass = `w-10 h-10 rounded-[12px] flex items-center justify-center transition-all duration-200 hover:scale-105 active:scale-95`;
 
+  // === SOLUCIÓN OBSERVACIÓN 3.1: EMPTY STATE DEL DASHBOARD ===
+  if (!loading && cuentas.length === 0) {
+    return (
+      <div className="max-w-[1400px] mx-auto px-6 py-12 pb-40">
+        {/* HEADER BÁSICO */}
+        <header className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 gap-6">
+          <div>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-[#6366F1] rounded-[12px] flex items-center justify-center text-white shadow-lg shadow-indigo-500/20"><IconWallet /></div>
+              <h1 className="text-2xl font-bold tracking-tight">Finanzas</h1>
+            </div>
+            <p className="text-[#64748B] text-sm font-medium mt-2">{userEmail}</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <button onClick={toggleTheme} className={`flex items-center gap-2 px-5 py-2.5 rounded-[16px] text-sm font-semibold transition-all border ${isDarkMode ? 'bg-[#111827] border-slate-800 text-slate-300' : 'bg-white border-[#E2E8F0] text-[#1E293B] shadow-sm'}`}>
+              {isDarkMode ? <><IconSun /> Claro</> : <><IconMoon /> Oscuro</>}
+            </button>
+            <button onClick={handleLogout} className={`flex items-center gap-2 px-5 py-2.5 rounded-[16px] text-sm font-semibold transition-all border text-[#F43F5E] ${isDarkMode ? 'bg-[#111827] border-slate-800' : 'bg-white border-[#E2E8F0] shadow-sm'}`}>
+              <IconLogout /> Salir
+            </button>
+          </div>
+        </header>
+
+        {/* EMPTY STATE UI */}
+        <div className={`${cardClass} flex flex-col items-center justify-center py-20 px-6 text-center animate-in zoom-in-95 duration-500`}>
+          <div className="w-24 h-24 bg-[#6366F1]/10 text-[#6366F1] rounded-full flex items-center justify-center mb-6">
+            <IconWallet />
+          </div>
+          <h2 className="text-3xl font-extrabold mb-3 tracking-tight">Comienza tu control financiero</h2>
+          <p className="text-[#64748B] mb-10 max-w-md font-medium text-base">Aún no tienes cuentas ni movimientos registrados. Rompe el lienzo en blanco creando tu primer registro y descubre el potencial de tus métricas.</p>
+          <button onClick={() => setIsModalOpen(true)} className="px-8 py-4 bg-[#6366F1] text-white font-bold rounded-[20px] shadow-[0_8px_20px_rgba(99,102,241,0.25)] hover:bg-indigo-500 hover:scale-105 active:scale-95 transition-all flex items-center gap-3">
+            <IconPlus /> Crear primer movimiento
+          </button>
+        </div>
+
+        {isModalOpen && <MovementModal token={token} cuentas={cuentas} isDarkMode={isDarkMode} onClose={() => setIsModalOpen(false)} onSuccess={() => { setIsModalOpen(false); fetchDashboard(); }} showToast={showToast} />}
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-[1400px] mx-auto px-6 py-12 pb-40">
       
@@ -580,19 +620,21 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
 }
 
 // ==========================================
-// MOVEMENT MODAL
+// SOLUCIÓN OBSERVACIÓN 3.2: MOVEMENT MODAL REFACTORIZADO
 // ==========================================
 function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToast }) {
   const [tipo, setTipo] = useState('Ingreso');
   const [modo, setModo] = useState('EXISTING');
   const [nombreNuevo, setNombreNuevo] = useState('');
   const [cuentaId, setCuentaId] = useState('');
+  
+  // Estados para la pestaña de Transferencia
+  const [origenId, setOrigenId] = useState('');
+  
   const [monto, setMonto] = useState('');
   const [fecha, setFecha] = useState(new Date().toISOString().split('T')[0]);
   const [categoria, setCategoria] = useState('General');
   const [concepto, setConcepto] = useState('');
-  const [isTransfer, setIsTransfer] = useState(false);
-  const [origenId, setOrigenId] = useState('');
   const [loading, setLoading] = useState(false);
 
   const formatCurrency = (e) => setMonto(e.target.value.replace(/[^0-9.]/g, ''));
@@ -601,15 +643,49 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
     e.preventDefault();
     const finalMonto = parseFloat(monto);
     if (!finalMonto || isNaN(finalMonto)) return showToast("Monto inválido", "error");
-    if (isTransfer && !origenId && tipo !== "Ingreso") return showToast("Selecciona origen", "error");
 
     setLoading(true);
-    let targetId = cuentaId;
-    let targetName = "";
 
     try {
+      // ==== FLUJO 1: TRANSFERENCIA PURA ====
+      if (tipo === 'Transferencia') {
+        if (!origenId || !cuentaId) {
+          setLoading(false);
+          return showToast("Selecciona origen y destino", "error");
+        }
+        if (origenId === cuentaId) {
+          setLoading(false);
+          return showToast("El origen y destino no pueden ser la misma cuenta", "error");
+        }
+
+        const origenName = cuentas.find(c => c.id === Number(origenId))?.nombre || "Origen";
+        const targetName = cuentas.find(c => c.id === Number(cuentaId))?.nombre || "Destino";
+
+        // 1. Gasto en la cuenta origen
+        await fetch(`${API}/movimientos`, { 
+          method: 'POST', headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`}, 
+          body: JSON.stringify({ cuentaId: Number(origenId), tipo: "Gasto", monto: finalMonto, concepto: `[Transferencia] Enviado a ${targetName}`, fecha: fecha ? new Date(fecha + "T12:00:00").toISOString() : new Date().toISOString() }) 
+        });
+
+        // 2. Ingreso en la cuenta destino
+        await fetch(`${API}/movimientos`, { 
+          method: 'POST', headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`}, 
+          body: JSON.stringify({ cuentaId: Number(cuentaId), tipo: "Ingreso", monto: finalMonto, concepto: `[Transferencia] Recibido de ${origenName}`, fecha: fecha ? new Date(fecha + "T12:00:00").toISOString() : new Date().toISOString() }) 
+        });
+
+        onSuccess(null); // Termina con éxito
+        return;
+      }
+
+      // ==== FLUJO 2: INGRESO, GASTO, O PRÉSTAMO ====
+      let targetId = cuentaId;
+      let targetName = "";
+
       if (modo === "NEW") {
-        const res = await fetch(`${API}/cuentas`, { method: 'POST', headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`}, body: JSON.stringify({ nombre: nombreNuevo, monto: 0 }) });
+        const res = await fetch(`${API}/cuentas`, { 
+          method: 'POST', headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`}, 
+          body: JSON.stringify({ nombre: nombreNuevo, monto: 0 }) 
+        });
         const data = await res.json();
         targetId = data.id; targetName = data.nombre;
       } else {
@@ -617,12 +693,14 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
       }
 
       const conceptoFinal = tipo === "Préstamo" ? concepto : (categoria !== "General" ? `[${categoria}] ${concepto}`.trim() : concepto);
-      await fetch(`${API}/movimientos`, { method: 'POST', headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`}, body: JSON.stringify({ cuentaId: Number(targetId), tipo, monto: finalMonto, concepto: conceptoFinal, fecha: fecha ? new Date(fecha + "T12:00:00").toISOString() : new Date().toISOString() }) });
+      
+      // Registro normal
+      await fetch(`${API}/movimientos`, { 
+        method: 'POST', headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`}, 
+        body: JSON.stringify({ cuentaId: Number(targetId), tipo, monto: finalMonto, concepto: conceptoFinal, fecha: fecha ? new Date(fecha + "T12:00:00").toISOString() : new Date().toISOString() }) 
+      });
 
-      if (isTransfer && origenId && tipo !== "Ingreso") {
-        await fetch(`${API}/movimientos`, { method: 'POST', headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`}, body: JSON.stringify({ cuentaId: Number(origenId), tipo: "Gasto", monto: finalMonto, concepto: tipo === "Préstamo" ? `[Préstamo Otorgado] a ${targetName}` : `[Pago de] ${targetName}`, fecha: fecha ? new Date(fecha + "T12:00:00").toISOString() : new Date().toISOString() }) });
-      }
-
+      // Lógica de Devolución de Préstamo (si el ingreso es a una cuenta con deuda)
       let refundObject = null;
       if (tipo === "Ingreso") {
         const targetCuenta = cuentas.find(c => c.id === Number(targetId));
@@ -631,7 +709,12 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
         }
       }
       onSuccess(refundObject);
-    } catch (error) { showToast("Error", "error"); } finally { setLoading(false); }
+
+    } catch (error) { 
+      showToast("Error al registrar movimiento", "error"); 
+    } finally { 
+      setLoading(false); 
+    }
   };
 
   const inputClass = `w-full px-5 py-4 rounded-[20px] outline-none border font-medium transition-all ${isDarkMode ? 'bg-[#0B1120] border-slate-800 text-white focus:border-[#6366F1]' : 'bg-white border-[#E2E8F0] focus:border-[#6366F1] focus:shadow-[0_0_0_4px_rgba(99,102,241,0.1)]'}`;
@@ -640,51 +723,78 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0B1120]/60 backdrop-blur-md overflow-y-auto">
       <div className={`w-full max-w-md p-8 rounded-[32px] shadow-2xl my-8 border animate-in zoom-in-95 ${isDarkMode ? 'bg-[#111827] border-slate-800' : 'bg-[#F7F9FC] border-[#E2E8F0]'}`}>
         <div className="flex justify-between items-center mb-8">
-          <h2 className="text-2xl font-extrabold tracking-tight">Movimiento</h2>
+          <h2 className="text-2xl font-extrabold tracking-tight">Registro</h2>
           <button onClick={onClose} className="w-10 h-10 rounded-full flex items-center justify-center font-bold text-[#64748B] hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">✕</button>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
-          <div className={`flex gap-1 p-1.5 rounded-[20px] border ${isDarkMode ? 'bg-[#0B1120] border-slate-800' : 'bg-[#E2E8F0]/50 border-transparent'}`}>
-            {['Ingreso', 'Gasto', 'Préstamo'].map(t => (
-              <button key={t} type="button" onClick={() => setTipo(t)} className={`flex-1 py-3 text-xs font-bold uppercase tracking-wider rounded-[16px] transition-all ${tipo === t ? 'bg-white dark:bg-[#1E293B] text-[#1E293B] dark:text-white shadow-sm' : 'text-[#64748B] hover:text-[#1E293B] dark:hover:text-white'}`}>
-                {t}
+          
+          {/* TABS SUPERIORES (Se incluye "Transferencia" para evitar checkboxes ocultos) */}
+          <div className={`flex gap-1 p-1.5 rounded-[20px] border overflow-x-auto ${isDarkMode ? 'bg-[#0B1120] border-slate-800' : 'bg-[#E2E8F0]/50 border-transparent'}`}>
+            {['Ingreso', 'Gasto', 'Transferencia', 'Préstamo'].map(t => (
+              <button 
+                key={t} type="button" onClick={() => setTipo(t)} 
+                className={`flex-1 min-w-[70px] py-3 text-[11px] font-bold uppercase tracking-wider rounded-[16px] transition-all ${tipo === t ? 'bg-white dark:bg-[#1E293B] text-[#1E293B] dark:text-white shadow-sm' : 'text-[#64748B] hover:text-[#1E293B] dark:hover:text-white'}`}
+              >
+                {t === 'Transferencia' ? 'Transf.' : t}
               </button>
             ))}
           </div>
 
-          <select value={modo} onChange={(e) => setModo(e.target.value)} className={inputClass}>
-            <option value="EXISTING">Seleccionar existente</option>
-            <option value="NEW">Crear nuevo registro</option>
-          </select>
+          {/* VISTA DINÁMICA DE FORMULARIO SEGÚN EL TAB */}
+          {tipo === 'Transferencia' ? (
+            <div className={`p-5 rounded-[20px] border mb-4 ${isDarkMode ? 'bg-[#0B1120] border-slate-800' : 'bg-white border-[#E2E8F0]'}`}>
+              <label className="block text-xs font-bold text-[#64748B] uppercase tracking-widest mb-2">Cuenta Origen (Descuento)</label>
+              <select required value={origenId} onChange={e => setOrigenId(e.target.value)} className={`${inputClass} mb-4`}>
+                <option value="" disabled>-- Selecciona de dónde sale --</option>
+                {cuentas.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+              </select>
+              
+              <label className="block text-xs font-bold text-[#64748B] uppercase tracking-widest mb-2">Cuenta Destino (Ingreso)</label>
+              <select required value={cuentaId} onChange={e => setCuentaId(e.target.value)} className={inputClass}>
+                <option value="" disabled>-- Selecciona a dónde llega --</option>
+                {cuentas.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+              </select>
+            </div>
+          ) : (
+            <>
+              <select value={modo} onChange={(e) => setModo(e.target.value)} className={inputClass}>
+                <option value="EXISTING">Seleccionar registro existente</option>
+                <option value="NEW">Crear nuevo registro</option>
+              </select>
 
-          {modo === "NEW" ? <input type="text" placeholder="Nombre" required value={nombreNuevo} onChange={e => setNombreNuevo(e.target.value)} className={inputClass} /> : <select required value={cuentaId} onChange={e => setCuentaId(e.target.value)} className={inputClass}><option value="" disabled>-- Registro --</option>{cuentas.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}</select>}
+              {modo === "NEW" ? (
+                <input type="text" placeholder="Nombre" required value={nombreNuevo} onChange={e => setNombreNuevo(e.target.value)} className={inputClass} />
+              ) : (
+                <select required value={cuentaId} onChange={e => setCuentaId(e.target.value)} className={inputClass}>
+                  <option value="" disabled>-- Selecciona el registro --</option>
+                  {cuentas.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                </select>
+              )}
+            </>
+          )}
 
           <div className="flex gap-4">
-            <input type="text" placeholder="$ 0.00" required value={monto} onChange={formatCurrency} className={inputClass} />
+            <input type="text" placeholder="$ Monto" required value={monto} onChange={formatCurrency} className={inputClass} />
             <input type="date" required value={fecha} onChange={e => setFecha(e.target.value)} className={inputClass} />
           </div>
 
-          {tipo !== 'Préstamo' && (
+          {(tipo === 'Gasto' || tipo === 'Ingreso') && (
             <select value={categoria} onChange={e => setCategoria(e.target.value)} className={inputClass}>
-              <option value="General">General</option><option value="Comida">Comida</option><option value="Transporte">Transporte</option><option value="Vivienda">Vivienda</option><option value="Entretenimiento">Entretenimiento</option><option value="Pago Tarjeta/Deuda">Deuda / Tarjeta</option><option value="Nómina/Salario">Nómina / Salario</option>
+              <option value="General">Categoría: General</option>
+              <option value="Comida">Comida y Despensa</option>
+              <option value="Transporte">Transporte / Gasolina</option>
+              <option value="Vivienda">Vivienda y Servicios</option>
+              <option value="Entretenimiento">Ocio y Entretenimiento</option>
+              <option value="Pago Tarjeta/Deuda">Pago de Deuda</option>
+              <option value="Nómina/Salario">Nómina / Salario</option>
             </select>
           )}
 
-          <input type="text" placeholder="Concepto (opcional)" value={concepto} onChange={e => setConcepto(e.target.value)} className={inputClass} />
-
-          {tipo !== 'Ingreso' && (
-            <div className={`p-5 rounded-[20px] border transition-colors ${isDarkMode ? 'bg-[#0B1120] border-slate-800' : 'bg-white border-[#E2E8F0]'}`}>
-              <label className="flex items-center gap-3 cursor-pointer text-sm font-semibold text-[#1E293B] dark:text-white">
-                <input type="checkbox" checked={isTransfer} onChange={(e) => setIsTransfer(e.target.checked)} className="w-5 h-5 accent-[#6366F1] rounded" />
-                Descontar de otra cuenta
-              </label>
-              {isTransfer && <select required value={origenId} onChange={e => setOrigenId(e.target.value)} className={`${inputClass} mt-4 shadow-none`}><option value="" disabled>-- Origen --</option>{cuentas.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}</select>}
-            </div>
-          )}
+          <input type="text" placeholder="Concepto o descripción (opcional)" value={concepto} onChange={e => setConcepto(e.target.value)} className={inputClass} />
 
           <button type="submit" disabled={loading} className={`w-full mt-4 py-4 rounded-[20px] font-bold tracking-wide text-white transition-all active:scale-[0.98] ${loading ? 'opacity-50' : 'bg-[#6366F1] hover:bg-indigo-500 shadow-[0_8px_20px_rgba(99,102,241,0.25)]'}`}>
-            {loading ? 'Guardando...' : 'Confirmar'}
+            {loading ? 'Procesando...' : (tipo === 'Transferencia' ? 'Realizar Transferencia' : 'Confirmar Movimiento')}
           </button>
         </form>
       </div>
