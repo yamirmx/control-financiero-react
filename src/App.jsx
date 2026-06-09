@@ -32,6 +32,12 @@ export const formatMoney = (amount) => {
   }).format(amount);
 };
 
+// Limpia los corchetes de la base de datos para la UI
+export const cleanConcepto = (raw) => {
+  if (!raw) return "-";
+  return raw.replace(/\[|\]/g, '').trim();
+};
+
 function AnimatedCounter({ value }) {
   const [displayValue, setDisplayValue] = useState(0);
 
@@ -258,7 +264,7 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
   };
 
   // ==========================================
-  // LÓGICA FINANCIERA (Intacta)
+  // LÓGICA FINANCIERA CORREGIDA Y AISLADA
   // ==========================================
   const metricas = useMemo(() => {
     let ingresos = 0, gastos = 0, deuda = 0;
@@ -301,6 +307,7 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
     return { ingresos, gastos, deuda };
   }, [cuentas]);
 
+  // Solo una fila abierta a la vez
   const toggleRow = (id) => {
     setExpandedRows(prev => prev[id] ? {} : { [id]: true });
   };
@@ -387,7 +394,7 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
     };
   }, [metricas]);
 
-  // Constantes de estilo premium adaptadas a Soft UI / Notion
+  // Constantes de estilo premium
   const cardClass = `rounded-[32px] transition-all border ${isDarkMode ? 'bg-[#1F2937] border-[#374151] shadow-2xl' : 'bg-[#F7F9FC] border-[#E2E8F0] shadow-[0_8px_30px_rgb(0,0,0,0.04)]'}`;
   const iconBtnClass = `w-10 h-10 rounded-[12px] flex items-center justify-center transition-all duration-200 hover:scale-105 active:scale-95`;
   const textMuted = isDarkMode ? 'text-[#9CA3AF]' : 'text-[#64748B]';
@@ -515,10 +522,10 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
             <table className="w-full text-left border-collapse min-w-[900px]">
               <thead>
                 <tr className="border-b border-[#E2E8F0] dark:border-[#374151] bg-[#F4F7FB]/50 dark:bg-[#111827]/50">
-                  {/* AJUSTE DE COLUMNAS: Distribuido equilibradamente. Acciones perfectamente centrado. */}
                   <th className={`w-1/4 px-8 py-4 text-[11px] font-medium uppercase tracking-widest ${textMuted} text-left`}>Registro</th>
                   <th className={`w-1/4 px-8 py-4 text-[11px] font-medium uppercase tracking-widest ${textMuted} text-center`}>Tipo</th>
                   <th className={`w-1/4 px-8 py-4 text-[11px] font-medium uppercase tracking-widest ${textMuted} text-center`}>Balance</th>
+                  {/* Columna Acciones totalmente centrada dentro de su espacio */}
                   <th className={`w-1/4 px-8 py-4 text-[11px] font-medium uppercase tracking-widest ${textMuted} text-center`}>Acciones</th>
                 </tr>
               </thead>
@@ -566,9 +573,10 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
                         <td className={`px-8 py-5 font-semibold text-xl tracking-tight text-center ${colorSaldo}`}>
                           {formatMoney(Math.abs(balanceCuenta))}
                         </td>
+                        {/* Botones centrados sin empujarse al borde derecho */}
                         <td className="px-8 py-5">
                           <div className="flex justify-center items-center gap-2">
-                            <button onClick={() => toggleRow(cuenta.id)} className={`${iconBtnClass} ${isRowOpen ? 'bg-[#6366F1] text-white' : `bg-[#F4F7FB] dark:bg-[#111827] ${textSecondary} hover:text-[#6366F1] dark:hover:text-indigo-400`}`}>
+                            <button onClick={() => toggleRow(cuenta.id)} className={`${iconBtnClass} ${isRowOpen ? 'bg-[#6366F1] text-white shadow-md' : `bg-[#F4F7FB] dark:bg-[#111827] ${textSecondary} hover:text-[#6366F1] dark:hover:text-indigo-400`}`}>
                               <IconEye />
                             </button>
                             <button onClick={() => generarPDF(cuenta)} className={`${iconBtnClass} bg-[#F4F7FB] dark:bg-[#111827] ${textSecondary} hover:text-[#6366F1] dark:hover:text-indigo-400`}><IconPDF /></button>
@@ -579,57 +587,68 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
                         </td>
                       </tr>
 
-                      {/* --- FILAS EXPANDIDAS DE DETALLE (ALINEACIÓN A LA IZQUIERDA PARA LEER FÁCILMENTE) --- */}
-                      
-                      {isRowOpen && txFiltradas.length === 0 && (
-                        <tr className="bg-[#F8FAFC] dark:bg-[#111827] border-b border-[#E2E8F0] dark:border-[#374151] animate-in fade-in duration-300">
-                          <td colSpan="4" className={`px-8 py-6 text-center text-sm font-medium ${textSecondary}`}>
-                            Sin movimientos en este periodo.
-                          </td>
-                        </tr>
-                      )}
+                      {/* --- SECCIÓN EXPANDIDA: DETALLES EN TARJETAS (ESTILO STRIPE/REVOLUT) --- */}
+                      {isRowOpen && (
+                        <tr>
+                          <td colSpan="4" className="p-0 bg-[#F8FAFC] dark:bg-[#0B1120]/40 border-b border-[#E2E8F0] dark:border-[#374151]">
+                            <div className="p-6 md:p-8 animate-in fade-in slide-in-from-top-2 duration-300">
+                              <h4 className={`text-xs font-bold uppercase tracking-widest ${textMuted} mb-6 ml-2`}>Historial de movimientos</h4>
+                              
+                              {txFiltradas.length === 0 ? (
+                                <p className={`text-sm font-medium ${textSecondary} ml-2`}>Sin movimientos en este periodo.</p>
+                              ) : (
+                                <div className="flex flex-col gap-4">
+                                  {txFiltradas.map((t) => {
+                                    let label = t.tipo;
+                                    if (t.concepto && t.concepto.includes("[Préstamo Otorgado]")) label = "Préstamo";
+                                    
+                                    // Puntos de color para el tipo
+                                    let dotClass = "bg-[#64748B]";
+                                    if (label === 'Ingreso' || label === 'Abono') dotClass = "bg-[#10B981]";
+                                    if (label === 'Gasto') dotClass = "bg-[#F43F5E]";
+                                    if (label === 'Préstamo') dotClass = "bg-[#6366F1]";
 
-                      {isRowOpen && txFiltradas.map((t, idx) => {
-                        let label = t.tipo;
-                        if (t.concepto && t.concepto.includes("[Préstamo Otorgado]")) label = "Préstamo";
-                        
-                        let badgeClass = "bg-[#E2E8F0] text-[#64748B] dark:bg-[#374151] dark:text-[#D1D5DB]";
-                        if (label === 'Ingreso' || label === 'Abono') badgeClass = "bg-[#10B981]/10 text-[#10B981] dark:bg-[#10B981]/20";
-                        if (label === 'Gasto') badgeClass = "bg-[#F43F5E]/10 text-[#F43F5E] dark:bg-[#F43F5E]/20";
-                        if (label === 'Préstamo') badgeClass = "bg-[#6366F1]/10 text-[#6366F1] dark:bg-[#6366F1]/20";
+                                    return (
+                                      <div key={t.id} className={`p-6 rounded-[24px] border ${isDarkMode ? 'bg-[#1F2937] border-[#374151]' : 'bg-white border-[#E2E8F0]'} shadow-sm hover:shadow-md transition-shadow flex flex-col gap-4`}>
+                                        
+                                        {/* Cabecera de la Tarjeta (Tipo alineado a la izquierda) */}
+                                        <div className="flex items-center gap-3">
+                                          <span className={`w-3 h-3 rounded-full ${dotClass}`}></span>
+                                          <span className="text-sm font-bold text-[#1E293B] dark:text-[#F9FAFB] tracking-wide">{label}</span>
+                                        </div>
+                                        
+                                        {/* Contenido (Alineado estrictamente a la izquierda) */}
+                                        <div className="pl-6 flex flex-col gap-3">
+                                          <div className={`text-sm font-medium ${textSecondary}`}>
+                                            {new Date(t.fecha).toLocaleDateString('es-MX')}
+                                          </div>
+                                          
+                                          <div className="flex flex-col gap-1">
+                                            <span className={`text-[11px] font-bold uppercase tracking-widest ${textMuted}`}>Monto</span>
+                                            <span className="text-base font-semibold text-[#1E293B] dark:text-[#F9FAFB]">{formatMoney(t.monto)}</span>
+                                          </div>
+                                          
+                                          <div className="flex flex-col gap-1">
+                                            <span className={`text-[11px] font-bold uppercase tracking-widest ${textMuted}`}>Concepto</span>
+                                            <span className="text-sm font-medium text-[#1E293B] dark:text-[#F9FAFB] leading-relaxed">
+                                              {cleanConcepto(t.concepto)}
+                                            </span>
+                                          </div>
+                                        </div>
 
-                        const isLast = idx === txFiltradas.length - 1;
-
-                        return (
-                          <tr key={t.id} className={`bg-[#F8FAFC] dark:bg-[#111827] ${isLast ? 'border-b border-[#E2E8F0] dark:border-[#374151]' : 'border-b border-dashed border-[#E2E8F0] dark:border-[#374151]'} hover:bg-white dark:hover:bg-[#1F2937]/50 transition-colors animate-in fade-in duration-300`}>
-                            {/* Fecha */}
-                            <td className={`px-8 py-4 text-sm font-medium ${textSecondary} text-left`}>
-                              {new Date(t.fecha).toLocaleDateString('es-MX')}
-                            </td>
-                            {/* Tipo */}
-                            <td className="px-8 py-4 text-left">
-                              <div className="flex justify-start">
-                                <span className={`px-2.5 py-1 rounded-md text-[10px] font-medium uppercase tracking-wider ${badgeClass}`}>{label}</span>
-                              </div>
-                            </td>
-                            {/* Balance */}
-                            <td className={`px-8 py-4 text-sm font-semibold text-[#1E293B] dark:text-[#F9FAFB] text-left`}>
-                              {formatMoney(t.monto)}
-                            </td>
-                            {/* Concepto - Alineado a la izquierda para fácil lectura */}
-                            <td className={`px-8 py-4 text-sm font-medium ${textSecondary} text-left`}>
-                              {t.concepto || "-"}
-                            </td>
-                          </tr>
-                        );
-                      })}
-
-                      {isRowOpen && !filterMonth && txFiltradas.length > 0 && (
-                        <tr className="bg-[#F8FAFC] dark:bg-[#111827] border-b border-[#E2E8F0] dark:border-[#374151]">
-                          <td colSpan="4" className="px-8 py-4">
-                            <button onClick={() => loadMoreTransactions(cuenta.id, cuenta.transacciones.length)} disabled={loadingMore} className={`w-full max-w-sm mx-auto block py-3 text-xs font-medium uppercase tracking-wider rounded-[16px] bg-white dark:bg-[#1F2937] border border-[#E2E8F0] dark:border-[#374151] ${textSecondary} hover:text-[#6366F1] transition-colors disabled:opacity-50 shadow-sm hover:shadow-md`}>
-                              {loadingMore ? 'Cargando...' : 'Cargar historial anterior'}
-                            </button>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+                              
+                              {/* Botón Cargar Más */}
+                              {!filterMonth && txFiltradas.length > 0 && (
+                                <button onClick={() => loadMoreTransactions(cuenta.id, cuenta.transacciones.length)} disabled={loadingMore} className={`mt-6 w-full max-w-sm mx-auto block py-4 text-xs font-medium uppercase tracking-wider rounded-[20px] bg-white dark:bg-[#1F2937] border border-[#E2E8F0] dark:border-[#374151] ${textSecondary} hover:text-[#6366F1] transition-colors disabled:opacity-50 shadow-sm hover:shadow-md`}>
+                                  {loadingMore ? 'Cargando...' : 'Cargar historial anterior'}
+                                </button>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       )}
@@ -714,7 +733,6 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
   const [concepto, setConcepto] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // CATEGORÍAS DINÁMICAS
   const getCategorias = () => {
     switch (tipo) {
       case 'Ingreso':
@@ -740,7 +758,6 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Validación estricta de UX
     if (tipo !== 'Transferencia' && !categoria) {
       return showToast("Selecciona una categoría para continuar.", "error");
     }
@@ -887,7 +904,6 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
                 )}
               </div>
 
-              {/* Opciones avanzadas vinculadas al registro */}
               {(tipo === 'Préstamo' || tipo === 'Gasto') && (
                 <div>
                   <label className={labelClass}>¿Descontar de alguna cuenta tuya?</label>
@@ -900,7 +916,7 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
             </div>
           )}
 
-          {/* 3. MONTO Y FECHA (En Grid para escritorio/mobile) */}
+          {/* 3. MONTO Y FECHA */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div>
               <label className={labelClass}>Monto <span className="text-[#F43F5E]">*</span></label>
@@ -912,7 +928,7 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
             </div>
           </div>
 
-          {/* 4. CATEGORÍA (Oculta en transferencias) */}
+          {/* 4. CATEGORÍA */}
           {tipo !== 'Transferencia' && (
             <div>
               <label className={labelClass}>Categoría <span className="text-[#F43F5E]">*</span></label>
