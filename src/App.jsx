@@ -258,7 +258,7 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
   };
 
   // ==========================================
-  // LÓGICA FINANCIERA CORREGIDA Y AISLADA
+  // LÓGICA FINANCIERA (Intacta)
   // ==========================================
   const metricas = useMemo(() => {
     let ingresos = 0, gastos = 0, deuda = 0;
@@ -467,7 +467,7 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
           <h2 className="text-[40px] font-semibold text-[#F43F5E] tracking-tighter leading-none"><AnimatedCounter value={metricas.gastos} /></h2>
         </div>
         <div className={`${cardClass} p-8 flex flex-col items-center justify-center text-center`}>
-          <p className={`uppercase tracking-widest text-xs font-medium ${textMuted} mb-2`}>Deuda Activa</p>
+          <p className={`uppercase tracking-widest text-xs font-medium ${textMuted} mb-2`}>Deuda Activa (A tu favor)</p>
           <h2 className="text-[40px] font-semibold text-[#1E293B] dark:text-[#F9FAFB] tracking-tighter leading-none"><AnimatedCounter value={metricas.deuda} /></h2>
         </div>
       </div>
@@ -515,9 +515,10 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
             <table className="w-full text-left border-collapse min-w-[900px]">
               <thead>
                 <tr className="border-b border-[#E2E8F0] dark:border-[#374151] bg-[#F4F7FB]/50 dark:bg-[#111827]/50">
-                  <th className={`w-1/4 px-8 py-4 text-[11px] font-medium uppercase tracking-widest ${textMuted}`}>Registro</th>
-                  <th className={`w-1/4 px-8 py-4 text-[11px] font-medium uppercase tracking-widest ${textMuted}`}>Tipo</th>
-                  <th className={`w-1/4 px-8 py-4 text-[11px] font-medium uppercase tracking-widest ${textMuted}`}>Balance</th>
+                  {/* AJUSTE DE COLUMNAS: Distribuido equilibradamente. Acciones perfectamente centrado. */}
+                  <th className={`w-1/4 px-8 py-4 text-[11px] font-medium uppercase tracking-widest ${textMuted} text-left`}>Registro</th>
+                  <th className={`w-1/4 px-8 py-4 text-[11px] font-medium uppercase tracking-widest ${textMuted} text-center`}>Tipo</th>
+                  <th className={`w-1/4 px-8 py-4 text-[11px] font-medium uppercase tracking-widest ${textMuted} text-center`}>Balance</th>
                   <th className={`w-1/4 px-8 py-4 text-[11px] font-medium uppercase tracking-widest ${textMuted} text-center`}>Acciones</th>
                 </tr>
               </thead>
@@ -549,17 +550,20 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
 
                   return (
                     <React.Fragment key={cuenta.id}>
+                      {/* --- FILA PRINCIPAL --- */}
                       <tr className={`border-b border-[#E2E8F0] dark:border-[#374151] hover:bg-white dark:hover:bg-[#273449] transition-all duration-200 group ${isRowOpen ? (isDarkMode ? 'bg-[#273449]' : 'bg-white') : ''}`}>
-                        <td className="px-8 py-5">
+                        <td className="px-8 py-5 text-left">
                           <div className={`text-[10px] font-medium tracking-widest ${textMuted} mb-1 opacity-70`}>ID {cuenta.id}</div>
                           <div className="font-medium text-base text-[#1E293B] dark:text-[#F9FAFB]">{cuenta.nombre}</div>
                         </td>
-                        <td className="px-8 py-5">
-                          <span className={`px-3 py-1 rounded-md text-[11px] font-medium bg-[#E2E8F0]/50 text-[#475569] dark:bg-[#374151]/50 dark:text-[#D1D5DB]`}>
-                            {mainType}
-                          </span>
+                        <td className="px-8 py-5 text-center">
+                          <div className="flex justify-center">
+                            <span className={`px-3 py-1 rounded-md text-[11px] font-medium bg-[#E2E8F0]/50 text-[#475569] dark:bg-[#374151]/50 dark:text-[#D1D5DB]`}>
+                              {mainType}
+                            </span>
+                          </div>
                         </td>
-                        <td className={`px-8 py-5 font-semibold text-xl tracking-tight ${colorSaldo}`}>
+                        <td className={`px-8 py-5 font-semibold text-xl tracking-tight text-center ${colorSaldo}`}>
                           {formatMoney(Math.abs(balanceCuenta))}
                         </td>
                         <td className="px-8 py-5">
@@ -575,6 +579,8 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
                         </td>
                       </tr>
 
+                      {/* --- FILAS EXPANDIDAS DE DETALLE (ALINEACIÓN A LA IZQUIERDA PARA LEER FÁCILMENTE) --- */}
+                      
                       {isRowOpen && txFiltradas.length === 0 && (
                         <tr className="bg-[#F8FAFC] dark:bg-[#111827] border-b border-[#E2E8F0] dark:border-[#374151] animate-in fade-in duration-300">
                           <td colSpan="4" className={`px-8 py-6 text-center text-sm font-medium ${textSecondary}`}>
@@ -596,16 +602,22 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
 
                         return (
                           <tr key={t.id} className={`bg-[#F8FAFC] dark:bg-[#111827] ${isLast ? 'border-b border-[#E2E8F0] dark:border-[#374151]' : 'border-b border-dashed border-[#E2E8F0] dark:border-[#374151]'} hover:bg-white dark:hover:bg-[#1F2937]/50 transition-colors animate-in fade-in duration-300`}>
-                            <td className={`px-8 py-4 text-sm font-medium ${textSecondary}`}>
+                            {/* Fecha */}
+                            <td className={`px-8 py-4 text-sm font-medium ${textSecondary} text-left`}>
                               {new Date(t.fecha).toLocaleDateString('es-MX')}
                             </td>
-                            <td className="px-8 py-4">
-                              <span className={`px-2.5 py-1 rounded-md text-[10px] font-medium uppercase tracking-wider ${badgeClass}`}>{label}</span>
+                            {/* Tipo */}
+                            <td className="px-8 py-4 text-left">
+                              <div className="flex justify-start">
+                                <span className={`px-2.5 py-1 rounded-md text-[10px] font-medium uppercase tracking-wider ${badgeClass}`}>{label}</span>
+                              </div>
                             </td>
-                            <td className={`px-8 py-4 text-sm font-semibold text-[#1E293B] dark:text-[#F9FAFB]`}>
+                            {/* Balance */}
+                            <td className={`px-8 py-4 text-sm font-semibold text-[#1E293B] dark:text-[#F9FAFB] text-left`}>
                               {formatMoney(t.monto)}
                             </td>
-                            <td className={`px-8 py-4 text-sm font-medium ${textSecondary} text-center`}>
+                            {/* Concepto - Alineado a la izquierda para fácil lectura */}
+                            <td className={`px-8 py-4 text-sm font-medium ${textSecondary} text-left`}>
                               {t.concepto || "-"}
                             </td>
                           </tr>
@@ -687,7 +699,7 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
 }
 
 // ==========================================
-// SOLUCIÓN: MOVEMENT MODAL Y ENTRADA DE TEXTO
+// FORMULARIO MODAL OPTIMIZADO (UX PROFESIONAL)
 // ==========================================
 function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToast }) {
   const [tipo, setTipo] = useState('Ingreso');
@@ -697,7 +709,6 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
   const [origenId, setOrigenId] = useState('');
   
   const [monto, setMonto] = useState('');
-  
   const [fecha, setFecha] = useState(new Date().toISOString().split('T')[0]);
   const [categoria, setCategoria] = useState('');
   const [concepto, setConcepto] = useState('');
@@ -729,7 +740,7 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    // Validación de categoría obligatoria
+    // Validación estricta de UX
     if (tipo !== 'Transferencia' && !categoria) {
       return showToast("Selecciona una categoría para continuar.", "error");
     }
@@ -821,11 +832,11 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
           <button type="button" onClick={onClose} className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${textMuted} hover:bg-[#E2E8F0] dark:hover:bg-[#374151] transition-colors`}>✕</button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit} className="space-y-6">
           
           {/* 1. TIPO DE ACCIÓN */}
           <div>
-            <label className={labelClass}>Tipo de Acción</label>
+            <label className={labelClass}>Tipo de Acción <span className="text-[#F43F5E]">*</span></label>
             <div className={`flex gap-1 p-1.5 rounded-[20px] border overflow-x-auto ${isDarkMode ? 'bg-[#111827] border-[#374151]' : 'bg-[#E2E8F0]/50 border-transparent'}`}>
               {['Ingreso', 'Gasto', 'Transferencia', 'Préstamo'].map(t => (
                 <button 
@@ -839,10 +850,72 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
             </div>
           </div>
 
-          {/* 2. CATEGORÍA (Oculta en Transferencia) */}
+          {/* 2. REGISTRO O PERSONA DESTINO */}
+          {tipo === 'Transferencia' ? (
+            <div className="space-y-5">
+              <div>
+                <label className={labelClass}>Cuenta Origen (Descuento) <span className="text-[#F43F5E]">*</span></label>
+                <select required value={origenId} onChange={e => setOrigenId(e.target.value)} className={inputClass}>
+                  <option value="" disabled>-- Selecciona de dónde sale --</option>
+                  {cuentas.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className={labelClass}>Cuenta Destino (Ingreso) <span className="text-[#F43F5E]">*</span></label>
+                <select required value={cuentaId} onChange={e => setCuentaId(e.target.value)} className={inputClass}>
+                  <option value="" disabled>-- Selecciona a dónde llega --</option>
+                  {cuentas.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                </select>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-5">
+              <div>
+                <label className={labelClass}>Registro o Persona Destino <span className="text-[#F43F5E]">*</span></label>
+                <select value={modo} onChange={(e) => setModo(e.target.value)} className={`${inputClass} mb-4`}>
+                  <option value="EXISTING">Seleccionar registro existente</option>
+                  <option value="NEW">Crear nuevo registro</option>
+                </select>
+
+                {modo === "NEW" ? (
+                  <input type="text" placeholder="Escribe el nuevo nombre" required value={nombreNuevo} onChange={e => setNombreNuevo(e.target.value)} className={inputClass} />
+                ) : (
+                  <select required value={cuentaId} onChange={e => setCuentaId(e.target.value)} className={inputClass}>
+                    <option value="" disabled>-- Selecciona el registro --</option>
+                    {cuentas.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                  </select>
+                )}
+              </div>
+
+              {/* Opciones avanzadas vinculadas al registro */}
+              {(tipo === 'Préstamo' || tipo === 'Gasto') && (
+                <div>
+                  <label className={labelClass}>¿Descontar de alguna cuenta tuya?</label>
+                  <select value={origenId} onChange={e => setOrigenId(e.target.value)} className={`${inputClass} !py-3`}>
+                    <option value="">No descontar (Solo registrar {tipo === 'Préstamo' ? 'la deuda' : 'el gasto'})</option>
+                    {cuentas.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                  </select>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* 3. MONTO Y FECHA (En Grid para escritorio/mobile) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div>
+              <label className={labelClass}>Monto <span className="text-[#F43F5E]">*</span></label>
+              <input type="text" placeholder="$0" required value={monto} onChange={handleMontoChange} className={inputClass} />
+            </div>
+            <div>
+              <label className={labelClass}>Fecha <span className="text-[#F43F5E]">*</span></label>
+              <input type="date" required value={fecha} onChange={e => setFecha(e.target.value)} className={inputClass} />
+            </div>
+          </div>
+
+          {/* 4. CATEGORÍA (Oculta en transferencias) */}
           {tipo !== 'Transferencia' && (
             <div>
-              <label className={labelClass}>Categoría</label>
+              <label className={labelClass}>Categoría <span className="text-[#F43F5E]">*</span></label>
               <select value={categoria} onChange={e => setCategoria(e.target.value)} className={inputClass}>
                 <option value="" disabled>-- Seleccionar categoría --</option>
                 {getCategorias().map(cat => (
@@ -852,71 +925,20 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
             </div>
           )}
 
-          {/* 3. MONTO Y FECHA */}
-          <div className="flex gap-4">
-            <div className="flex-1">
-              <label className={labelClass}>Monto</label>
-              <input type="text" placeholder="$0" required value={monto} onChange={handleMontoChange} className={inputClass} />
-            </div>
-            <div className="flex-1">
-              <label className={labelClass}>Fecha</label>
-              <input type="date" required value={fecha} onChange={e => setFecha(e.target.value)} className={inputClass} />
-            </div>
-          </div>
-
-          {/* 4. CONCEPTO */}
+          {/* 5. CONCEPTO */}
           {tipo !== 'Transferencia' && (
             <div>
               <label className={labelClass}>Concepto (Opcional)</label>
-              <input type="text" placeholder="Ej. Quincena, Despensa..." value={concepto} onChange={e => setConcepto(e.target.value)} className={inputClass} />
+              <textarea 
+                placeholder="Ej. Salario quincenal, Pago de internet..." 
+                value={concepto} 
+                onChange={e => setConcepto(e.target.value)} 
+                className={`${inputClass} resize-none h-24 py-4`} 
+              />
             </div>
           )}
 
-          {/* 5. CUENTA ASOCIADA / TRANSFERENCIA */}
-          {tipo === 'Transferencia' ? (
-            <div className={`p-6 rounded-[24px] border ${isDarkMode ? 'bg-[#111827] border-[#374151]' : 'bg-white border-[#E2E8F0]'}`}>
-              <label className={labelClass}>Cuenta Origen (Descuento)</label>
-              <select required value={origenId} onChange={e => setOrigenId(e.target.value)} className={`${inputClass} mb-4`}>
-                <option value="" disabled>-- Selecciona de dónde sale --</option>
-                {cuentas.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-              </select>
-              <label className={labelClass}>Cuenta Destino (Ingreso)</label>
-              <select required value={cuentaId} onChange={e => setCuentaId(e.target.value)} className={inputClass}>
-                <option value="" disabled>-- Selecciona a dónde llega --</option>
-                {cuentas.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-              </select>
-            </div>
-          ) : (
-            <div className={`p-6 rounded-[24px] border ${isDarkMode ? 'bg-[#111827] border-[#374151]' : 'bg-white border-[#E2E8F0]'}`}>
-              <label className={labelClass}>Registro o Persona Destino</label>
-              <select value={modo} onChange={(e) => setModo(e.target.value)} className={`${inputClass} mb-4`}>
-                <option value="EXISTING">Seleccionar registro existente</option>
-                <option value="NEW">Crear nuevo registro</option>
-              </select>
-
-              {modo === "NEW" ? (
-                <input type="text" placeholder="Escribe el nuevo nombre" required value={nombreNuevo} onChange={e => setNombreNuevo(e.target.value)} className={inputClass} />
-              ) : (
-                <select required value={cuentaId} onChange={e => setCuentaId(e.target.value)} className={inputClass}>
-                  <option value="" disabled>-- Selecciona el registro --</option>
-                  {cuentas.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-                </select>
-              )}
-            </div>
-          )}
-
-          {/* OPCIÓN AVANZADA: DESCONTAR DE OTRA CUENTA (Solo en Gasto/Préstamo) */}
-          {(tipo === 'Préstamo' || tipo === 'Gasto') && (
-            <div className={`p-6 rounded-[24px] border mt-2 ${isDarkMode ? 'bg-[#111827] border-[#374151]' : 'bg-white border-[#E2E8F0]'}`}>
-              <label className={labelClass}>¿Descontar de alguna cuenta tuya?</label>
-              <select value={origenId} onChange={e => setOrigenId(e.target.value)} className={`${inputClass} !py-3`}>
-                <option value="">No descontar (Solo registrar {tipo === 'Préstamo' ? 'la deuda' : 'el gasto'})</option>
-                {cuentas.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-              </select>
-            </div>
-          )}
-
-          <button type="submit" disabled={loading} className={`w-full mt-6 py-4 rounded-[20px] font-medium tracking-wide text-white transition-all active:scale-[0.98] ${loading ? 'opacity-50' : 'bg-[#6366F1] hover:bg-indigo-500 shadow-[0_8px_20px_rgba(99,102,241,0.25)]'}`}>
+          <button type="submit" disabled={loading} className={`w-full mt-8 py-4 rounded-[20px] font-medium tracking-wide text-white transition-all active:scale-[0.98] ${loading ? 'opacity-50' : 'bg-[#6366F1] hover:bg-indigo-500 shadow-[0_8px_20px_rgba(99,102,241,0.25)]'}`}>
             {loading ? 'Procesando...' : (tipo === 'Transferencia' ? 'Realizar Transferencia' : 'Confirmar Movimiento')}
           </button>
         </form>
