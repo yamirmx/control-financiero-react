@@ -112,8 +112,6 @@ export default function App() {
 
   return (
     <div className={`min-h-screen transition-colors duration-300 font-sans antialiased ${isDarkMode ? 'bg-[#111827] text-[#F9FAFB]' : 'bg-[#F4F7FB] text-[#1E293B]'}`}>
-      
-      {/* Sistema de Toasts Premium */}
       {toast.show && (
         <div className={`fixed top-6 right-6 px-6 py-4 rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.12)] z-50 transform transition-all flex items-center gap-3 backdrop-blur-md animate-in slide-in-from-top-5
           ${toast.type === 'success' ? 'bg-[#10B981]/90 text-white' : toast.type === 'error' ? 'bg-[#F43F5E]/90 text-white' : 'bg-[#1E293B]/90 text-white'}`}>
@@ -258,7 +256,7 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
   };
 
   // ==========================================
-  // LÓGICA FINANCIERA CORREGIDA Y AISLADA
+  // LÓGICA FINANCIERA (Intacta)
   // ==========================================
   const metricas = useMemo(() => {
     let ingresos = 0, gastos = 0, deuda = 0;
@@ -301,10 +299,7 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
     return { ingresos, gastos, deuda };
   }, [cuentas]);
 
-  // Cierra todas las filas y abre solo la seleccionada
-  const toggleRow = (id) => {
-    setExpandedRows(prev => prev[id] ? {} : { [id]: true });
-  };
+  const toggleRow = (id) => setExpandedRows(prev => prev[id] ? {} : { [id]: true });
 
   const confirmDelete = async () => {
     try {
@@ -388,7 +383,7 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
     };
   }, [metricas]);
 
-  // Constantes de estilo premium adaptadas a Soft UI / Notion
+  // Constantes de estilo premium
   const cardClass = `rounded-[32px] transition-all border ${isDarkMode ? 'bg-[#1F2937] border-[#374151] shadow-2xl' : 'bg-[#F7F9FC] border-[#E2E8F0] shadow-[0_8px_30px_rgb(0,0,0,0.04)]'}`;
   const iconBtnClass = `w-10 h-10 rounded-[12px] flex items-center justify-center transition-all duration-200 hover:scale-105 active:scale-95`;
   const textMuted = isDarkMode ? 'text-[#9CA3AF]' : 'text-[#64748B]';
@@ -457,7 +452,7 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
         </div>
       </header>
 
-      {/* MÉTRICAS (CENTRADAS) */}
+      {/* MÉTRICAS */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div className={`${cardClass} p-8 flex flex-col items-center justify-center text-center`}>
           <p className={`uppercase tracking-widest text-xs font-medium ${textMuted} mb-2`}>Ingresos (Mes)</p>
@@ -468,7 +463,7 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
           <h2 className="text-[40px] font-semibold text-[#F43F5E] tracking-tighter leading-none"><AnimatedCounter value={metricas.gastos} /></h2>
         </div>
         <div className={`${cardClass} p-8 flex flex-col items-center justify-center text-center`}>
-          <p className={`uppercase tracking-widest text-xs font-medium ${textMuted} mb-2`}>Deuda Activa</p>
+          <p className={`uppercase tracking-widest text-xs font-medium ${textMuted} mb-2`}>Deuda Activa (A tu favor)</p>
           <h2 className="text-[40px] font-semibold text-[#1E293B] dark:text-[#F9FAFB] tracking-tighter leading-none"><AnimatedCounter value={metricas.deuda} /></h2>
         </div>
       </div>
@@ -516,11 +511,12 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
             <table className="w-full text-left border-collapse min-w-[900px]">
               <thead>
                 <tr className="border-b border-[#E2E8F0] dark:border-[#374151] bg-[#F4F7FB]/50 dark:bg-[#111827]/50">
-                  {/* Ahora la tabla principal tiene 4 columnas exactas */}
-                  <th className={`px-8 py-4 text-[11px] font-medium uppercase tracking-widest ${textMuted}`}>Registro</th>
-                  <th className={`px-8 py-4 text-[11px] font-medium uppercase tracking-widest ${textMuted}`}>Tipo</th>
-                  <th className={`px-8 py-4 text-[11px] font-medium uppercase tracking-widest ${textMuted}`}>Balance</th>
-                  <th className={`px-8 py-4 text-[11px] font-medium uppercase tracking-widest ${textMuted} text-right`}>Acciones</th>
+                  {/* AJUSTE DE COLUMNAS: Distribuido equilibradamente */}
+                  <th className={`w-1/4 px-8 py-4 text-[11px] font-medium uppercase tracking-widest ${textMuted}`}>Registro</th>
+                  <th className={`w-1/4 px-8 py-4 text-[11px] font-medium uppercase tracking-widest ${textMuted}`}>Tipo</th>
+                  <th className={`w-1/4 px-8 py-4 text-[11px] font-medium uppercase tracking-widest ${textMuted}`}>Balance</th>
+                  {/* El encabezado Acciones ahora está centrado visualmente */}
+                  <th className={`w-1/4 px-8 py-4 text-[11px] font-medium uppercase tracking-widest ${textMuted} text-center`}>Acciones</th>
                 </tr>
               </thead>
               <tbody>
@@ -539,7 +535,6 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
                   else if (isLoan) colorSaldo = isDarkMode ? "text-[#D1D5DB]" : "text-[#1E293B]"; 
                   else if (balanceCuenta < 0) colorSaldo = "text-[#F43F5E]"; 
 
-                  // Determinar tipo de cuenta principal para la nueva columna "Tipo"
                   let mainType = "General";
                   if (isLoan) mainType = "Préstamo";
                   else if (txs.some(t => t.tipo === 'Ingreso')) mainType = "Ingreso";
@@ -566,19 +561,21 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
                         <td className={`px-8 py-5 font-semibold text-xl tracking-tight ${colorSaldo}`}>
                           {formatMoney(Math.abs(balanceCuenta))}
                         </td>
-                        <td className="px-8 py-5 flex justify-end gap-2">
-                          <button onClick={() => toggleRow(cuenta.id)} className={`${iconBtnClass} ${isRowOpen ? 'bg-[#6366F1] text-white' : `bg-[#F4F7FB] dark:bg-[#111827] ${textSecondary} hover:text-[#6366F1] dark:hover:text-indigo-400`}`}>
-                            <IconEye />
-                          </button>
-                          <button onClick={() => generarPDF(cuenta)} className={`${iconBtnClass} bg-[#F4F7FB] dark:bg-[#111827] ${textSecondary} hover:text-[#6366F1] dark:hover:text-indigo-400`}><IconPDF /></button>
-                          <button onClick={() => generarCSV(cuenta)} className={`${iconBtnClass} bg-[#F4F7FB] dark:bg-[#111827] ${textSecondary} hover:text-[#10B981] dark:hover:text-emerald-400`}><IconCSV /></button>
-                          <button onClick={() => setEditModal({ isOpen: true, id: cuenta.id, name: cuenta.nombre, newName: cuenta.nombre })} className={`${iconBtnClass} bg-[#F4F7FB] dark:bg-[#111827] ${textSecondary} hover:text-[#F59E0B] dark:hover:text-amber-400`}><IconEdit /></button>
-                          <button onClick={() => setDeleteModal({ isOpen: true, id: cuenta.id, name: cuenta.nombre })} className={`${iconBtnClass} bg-[#F43F5E]/10 text-[#F43F5E] hover:bg-[#F43F5E] hover:text-white`}><IconTrash /></button>
+                        {/* BOTONES CENTRADOS PERFECTAMENTE DENTRO DE SU COLUMNA */}
+                        <td className="px-8 py-5">
+                          <div className="flex justify-center items-center gap-2">
+                            <button onClick={() => toggleRow(cuenta.id)} className={`${iconBtnClass} ${isRowOpen ? 'bg-[#6366F1] text-white' : `bg-[#F4F7FB] dark:bg-[#111827] ${textSecondary} hover:text-[#6366F1] dark:hover:text-indigo-400`}`}>
+                              <IconEye />
+                            </button>
+                            <button onClick={() => generarPDF(cuenta)} className={`${iconBtnClass} bg-[#F4F7FB] dark:bg-[#111827] ${textSecondary} hover:text-[#6366F1] dark:hover:text-indigo-400`}><IconPDF /></button>
+                            <button onClick={() => generarCSV(cuenta)} className={`${iconBtnClass} bg-[#F4F7FB] dark:bg-[#111827] ${textSecondary} hover:text-[#10B981] dark:hover:text-emerald-400`}><IconCSV /></button>
+                            <button onClick={() => setEditModal({ isOpen: true, id: cuenta.id, name: cuenta.nombre, newName: cuenta.nombre })} className={`${iconBtnClass} bg-[#F4F7FB] dark:bg-[#111827] ${textSecondary} hover:text-[#F59E0B] dark:hover:text-amber-400`}><IconEdit /></button>
+                            <button onClick={() => setDeleteModal({ isOpen: true, id: cuenta.id, name: cuenta.nombre })} className={`${iconBtnClass} bg-[#F43F5E]/10 text-[#F43F5E] hover:bg-[#F43F5E] hover:text-white`}><IconTrash /></button>
+                          </div>
                         </td>
                       </tr>
 
-                      {/* --- FILAS EXPANDIDAS DE DETALLE --- */}
-                      {/* Respeta las mismas 4 columnas de la tabla */}
+                      {/* --- FILAS EXPANDIDAS DE DETALLE (ALINEACIÓN EXACTA CON LA TABLA) --- */}
                       
                       {isRowOpen && txFiltradas.length === 0 && (
                         <tr className="bg-[#F8FAFC] dark:bg-[#111827] border-b border-[#E2E8F0] dark:border-[#374151] animate-in fade-in duration-300">
@@ -601,27 +598,26 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
 
                         return (
                           <tr key={t.id} className={`bg-[#F8FAFC] dark:bg-[#111827] ${isLast ? 'border-b border-[#E2E8F0] dark:border-[#374151]' : 'border-b border-dashed border-[#E2E8F0] dark:border-[#374151]'} hover:bg-white dark:hover:bg-[#1F2937]/50 transition-colors animate-in fade-in duration-300`}>
-                            {/* Columna Registro -> Fecha */}
+                            {/* Fecha */}
                             <td className={`px-8 py-4 text-sm font-medium ${textSecondary}`}>
                               {new Date(t.fecha).toLocaleDateString('es-MX')}
                             </td>
-                            {/* Columna Tipo -> Tipo de Movimiento */}
+                            {/* Tipo */}
                             <td className="px-8 py-4">
                               <span className={`px-2.5 py-1 rounded-md text-[10px] font-medium uppercase tracking-wider ${badgeClass}`}>{label}</span>
                             </td>
-                            {/* Columna Balance -> Monto */}
-                            <td className={`px-8 py-4 text-sm font-medium text-[#1E293B] dark:text-[#F9FAFB]`}>
+                            {/* Balance */}
+                            <td className={`px-8 py-4 text-sm font-semibold text-[#1E293B] dark:text-[#F9FAFB]`}>
                               {formatMoney(t.monto)}
                             </td>
-                            {/* Columna Acciones -> Concepto */}
-                            <td className={`px-8 py-4 text-sm font-medium ${textSecondary} text-right`}>
+                            {/* Concepto - Centrado dentro de su columna para mantener el equilibrio visual */}
+                            <td className={`px-8 py-4 text-sm font-medium ${textSecondary} text-center`}>
                               {t.concepto || "-"}
                             </td>
                           </tr>
                         );
                       })}
 
-                      {/* Botón de cargar más (si aplica) anidado igual en las 4 columnas */}
                       {isRowOpen && !filterMonth && txFiltradas.length > 0 && (
                         <tr className="bg-[#F8FAFC] dark:bg-[#111827] border-b border-[#E2E8F0] dark:border-[#374151]">
                           <td colSpan="4" className="px-8 py-4">
@@ -854,7 +850,6 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
           )}
 
           <div className="flex gap-4">
-            {/* Input monetario con máscara en tiempo real */}
             <input type="text" placeholder="$0" required value={monto} onChange={handleMontoChange} className={inputClass} />
             <input type="date" required value={fecha} onChange={e => setFecha(e.target.value)} className={inputClass} />
           </div>
