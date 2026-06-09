@@ -258,7 +258,7 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
   };
 
   // ==========================================
-  // LÓGICA FINANCIERA CORREGIDA Y AISLADA
+  // LÓGICA FINANCIERA (Aislada y Exacta)
   // ==========================================
   const metricas = useMemo(() => {
     let ingresos = 0, gastos = 0, deuda = 0;
@@ -268,7 +268,7 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
     cuentas.forEach(u => {
       const txs = u.transacciones || [];
       
-      // Si la cuenta tiene al menos un préstamo donde el usuario es el prestamista, es Cuenta por Cobrar
+      // Si la cuenta tiene al menos un préstamo otorgado, se aísla como Cuenta por Cobrar
       const isLoanAccount = txs.some(t => t.tipo === "Préstamo" && (!t.concepto || !t.concepto.includes("[Préstamo Otorgado]")));
       
       let balanceCuenta = 0;
@@ -277,20 +277,19 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
          if(t.tipo === 'Gasto' || t.tipo === 'Préstamo') balanceCuenta -= t.monto;
       });
 
-      // Cálculo de DEUDA ACTIVA (Sólo el dinero que realmente te deben en las Cuentas por Cobrar)
+      // Cálculo de DEUDA ACTIVA
       if (isLoanAccount) {
         if (balanceCuenta < 0) deuda += Math.abs(balanceCuenta);
       }
 
-      // Cálculo de INGRESOS y GASTOS (Se ignoran las Cuentas por Cobrar para no mezclar)
+      // Cálculo de INGRESOS y GASTOS REALES
       if (!isLoanAccount) {
         txs.forEach(t => {
           const fechaTx = new Date(t.fecha);
           if (fechaTx.getMonth() === mesActual && fechaTx.getFullYear() === anioActual) {
             const concepto = t.concepto || "";
             
-            // FILTROS ESTRICTOS: No considerar transferencias ni devoluciones de préstamos
-            // Incluimos [Pago de] para ignorar los descuentos secundarios de gastos con otra cuenta
+            // Ignorar transferencias y abonos recuperados en la sumatoria mensual de ingresos/gastos
             const isTransfer = concepto.includes("[Transferencia]") || concepto.includes("[Pago de]");
             const isCapitalDevuelto = concepto.includes("[Capital Devuelto]");
             const isPrestamoOtorgado = concepto.includes("[Préstamo Otorgado]");
@@ -461,18 +460,18 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
         </div>
       </header>
 
-      {/* MÉTRICAS */}
+      {/* MÉTRICAS (CORRECCIÓN 1: Centrado de contenido) */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className={`${cardClass} p-8 flex flex-col justify-center`}>
+        <div className={`${cardClass} p-8 flex flex-col items-center justify-center text-center`}>
           <p className={`uppercase tracking-widest text-xs font-medium ${textMuted} mb-2`}>Ingresos (Mes)</p>
           <h2 className="text-[40px] font-semibold text-[#10B981] tracking-tighter leading-none"><AnimatedCounter value={metricas.ingresos} /></h2>
         </div>
-        <div className={`${cardClass} p-8 flex flex-col justify-center`}>
+        <div className={`${cardClass} p-8 flex flex-col items-center justify-center text-center`}>
           <p className={`uppercase tracking-widest text-xs font-medium ${textMuted} mb-2`}>Gastos (Mes)</p>
           <h2 className="text-[40px] font-semibold text-[#F43F5E] tracking-tighter leading-none"><AnimatedCounter value={metricas.gastos} /></h2>
         </div>
-        <div className={`${cardClass} p-8 flex flex-col justify-center`}>
-          <p className={`uppercase tracking-widest text-xs font-medium ${textMuted} mb-2`}>Deuda Activa (A tu favor)</p>
+        <div className={`${cardClass} p-8 flex flex-col items-center justify-center text-center`}>
+          <p className={`uppercase tracking-widest text-xs font-medium ${textMuted} mb-2`}>Deuda Activa</p>
           <h2 className="text-[40px] font-semibold text-[#1E293B] dark:text-[#F9FAFB] tracking-tighter leading-none"><AnimatedCounter value={metricas.deuda} /></h2>
         </div>
       </div>
@@ -503,7 +502,7 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
       {/* TABLA DE CUENTAS */}
       <div className={`${cardClass} overflow-hidden`}>
         <div className="p-6 md:px-8 border-b border-[#E2E8F0] dark:border-[#374151] flex flex-col md:flex-row justify-between items-center gap-4">
-          <h2 className="text-lg font-semibold tracking-tight">Directorio de Cuentas</h2>
+          <h2 className="text-lg font-semibold tracking-tight">Historial de Cuentas</h2>
           <div className="flex gap-3 w-full md:w-auto relative">
             <input type="month" value={filterMonth} onChange={(e) => setFilterMonth(e.target.value)} className={`px-4 py-2.5 rounded-[14px] text-sm outline-none transition-all border font-medium ${isDarkMode ? 'bg-[#111827] border-[#374151] text-[#F9FAFB] focus:border-[#6366F1]' : 'bg-white border-[#E2E8F0] focus:border-[#6366F1] shadow-sm'}`} />
             <div className="relative flex-1 md:w-64">
@@ -562,40 +561,58 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
                           <button onClick={() => setDeleteModal({ isOpen: true, id: cuenta.id, name: cuenta.nombre })} className={`${iconBtnClass} bg-[#F43F5E]/10 text-[#F43F5E] hover:bg-[#F43F5E] hover:text-white`}><IconTrash /></button>
                         </td>
                       </tr>
+
+                      {/* CORRECCIÓN 3 y 4: VISTA DE DETALLES ESTRUCTURADA EN DOS COLUMNAS */}
                       {expandedRows[cuenta.id] && (
                         <tr>
-                          <td colSpan="3" className="p-0 bg-[#F4F7FB]/50 dark:bg-[#111827]/50 border-b border-[#E2E8F0] dark:border-[#374151]">
-                            <div className="px-8 py-6">
+                          <td colSpan="3" className="p-0 bg-[#F4F7FB]/50 dark:bg-[#0B1120]/40 border-b border-[#E2E8F0] dark:border-[#374151]">
+                            <div className="p-6 md:p-8">
                               {txFiltradas.length === 0 ? (
-                                <p className={`text-sm font-medium ${textSecondary}`}>Sin movimientos en este periodo.</p>
+                                <p className={`text-sm font-medium ${textSecondary} text-center py-4`}>Sin movimientos en este periodo.</p>
                               ) : (
-                                <div>
-                                  <table className="w-full text-sm">
-                                    <tbody>
-                                      {txFiltradas.map(t => {
-                                        let label = t.tipo;
-                                        if (t.concepto && t.concepto.includes("[Préstamo Otorgado]")) label = "Préstamo";
-                                        
-                                        let badgeClass = "bg-[#E2E8F0] text-[#64748B] dark:bg-[#374151] dark:text-[#D1D5DB]";
-                                        if (label === 'Ingreso' || label === 'Abono') badgeClass = "bg-[#10B981]/10 text-[#10B981] dark:bg-[#10B981]/20";
-                                        if (label === 'Gasto') badgeClass = "bg-[#F43F5E]/10 text-[#F43F5E] dark:bg-[#F43F5E]/20";
-                                        if (label === 'Préstamo') badgeClass = "bg-[#6366F1]/10 text-[#6366F1] dark:bg-[#6366F1]/20";
+                                <div className="flex flex-col gap-4">
+                                  {txFiltradas.map(t => {
+                                    let label = t.tipo;
+                                    if (t.concepto && t.concepto.includes("[Préstamo Otorgado]")) label = "Préstamo";
+                                    
+                                    let badgeClass = "bg-[#E2E8F0] text-[#64748B] dark:bg-[#374151] dark:text-[#D1D5DB]";
+                                    if (label === 'Ingreso' || label === 'Abono') badgeClass = "bg-[#10B981]/10 text-[#10B981] dark:bg-[#10B981]/20";
+                                    if (label === 'Gasto') badgeClass = "bg-[#F43F5E]/10 text-[#F43F5E] dark:bg-[#F43F5E]/20";
+                                    if (label === 'Préstamo') badgeClass = "bg-[#6366F1]/10 text-[#6366F1] dark:bg-[#6366F1]/20";
 
-                                        return (
-                                          <tr key={t.id} className="border-b border-dashed border-[#E2E8F0] dark:border-[#374151] last:border-0 hover:bg-white/50 dark:hover:bg-[#1F2937]/50 transition-colors">
-                                            <td className={`py-4 ${textSecondary} w-32 font-medium`}>{new Date(t.fecha).toLocaleDateString()}</td>
-                                            <td className="py-4 w-32">
-                                              <span className={`px-2.5 py-1 rounded-md text-[10px] font-medium uppercase tracking-wider ${badgeClass}`}>{label}</span>
-                                            </td>
-                                            <td className={`py-4 font-medium ${textSecondary}`}>{t.concepto || "-"}</td>
-                                            <td className="py-4 font-semibold text-right text-[#1E293B] dark:text-[#F9FAFB]">{formatMoney(t.monto)}</td>
-                                          </tr>
-                                        )
-                                      })}
-                                    </tbody>
-                                  </table>
+                                    return (
+                                      <div key={t.id} className={`p-6 rounded-[24px] border ${isDarkMode ? 'bg-[#111827] border-[#374151]' : 'bg-white border-[#E2E8F0]'} shadow-sm transition-all hover:shadow-md`}>
+                                        <div className="flex flex-col gap-3 text-sm">
+                                          
+                                          <div className="flex items-center">
+                                            <span className={`w-28 md:w-32 font-medium ${textSecondary}`}>Fecha</span>
+                                            <span className="font-medium text-[#1E293B] dark:text-[#F9FAFB]">{new Date(t.fecha).toLocaleDateString('es-MX')}</span>
+                                          </div>
+                                          
+                                          <div className="flex items-center">
+                                            <span className={`w-28 md:w-32 font-medium ${textSecondary}`}>Tipo</span>
+                                            <span>
+                                              <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${badgeClass}`}>{label}</span>
+                                            </span>
+                                          </div>
+                                          
+                                          <div className="flex items-center">
+                                            <span className={`w-28 md:w-32 font-medium ${textSecondary}`}>Monto</span>
+                                            <span className="font-semibold text-[#1E293B] dark:text-[#F9FAFB]">{formatMoney(t.monto)}</span>
+                                          </div>
+                                          
+                                          <div className="flex items-start">
+                                            <span className={`w-28 md:w-32 font-medium ${textSecondary} mt-0.5`}>Concepto</span>
+                                            <span className="font-medium text-[#1E293B] dark:text-[#F9FAFB] flex-1 leading-relaxed">{t.concepto || "-"}</span>
+                                          </div>
+
+                                        </div>
+                                      </div>
+                                    )
+                                  })}
+                                  
                                   {!filterMonth && txFiltradas.length > 0 && (
-                                    <button onClick={() => loadMoreTransactions(cuenta.id, cuenta.transacciones.length)} disabled={loadingMore} className={`mt-4 px-5 py-2 text-xs font-medium uppercase tracking-wider rounded-xl bg-white dark:bg-[#1F2937] border border-[#E2E8F0] dark:border-[#374151] ${textSecondary} hover:text-[#6366F1] transition-colors disabled:opacity-50`}>
+                                    <button onClick={() => loadMoreTransactions(cuenta.id, cuenta.transacciones.length)} disabled={loadingMore} className={`mt-2 w-full py-4 text-xs font-medium uppercase tracking-wider rounded-[20px] bg-white dark:bg-[#1F2937] border border-[#E2E8F0] dark:border-[#374151] ${textSecondary} hover:text-[#6366F1] hover:shadow-md transition-all disabled:opacity-50`}>
                                       {loadingMore ? 'Cargando...' : 'Cargar historial anterior'}
                                     </button>
                                   )}
@@ -680,7 +697,6 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
   const [cuentaId, setCuentaId] = useState('');
   const [origenId, setOrigenId] = useState('');
   
-  // Aquí se maneja el formato en tiempo real
   const [monto, setMonto] = useState('');
   
   const [fecha, setFecha] = useState(new Date().toISOString().split('T')[0]);
@@ -688,7 +704,6 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
   const [concepto, setConcepto] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Formateador en vivo
   const handleMontoChange = (e) => {
     const rawValue = e.target.value.replace(/[^0-9]/g, '');
     if (!rawValue) {
@@ -706,7 +721,6 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
     setLoading(true);
 
     try {
-      // ==== FLUJO TRANSFERENCIA Pura ====
       if (tipo === 'Transferencia') {
         if (!origenId || !cuentaId) {
           setLoading(false); return showToast("Selecciona origen y destino", "error");
@@ -732,7 +746,6 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
         return;
       }
 
-      // ==== FLUJO: INGRESO, GASTO, PRÉSTAMO ====
       let targetId = cuentaId;
       let targetName = "";
 
@@ -749,14 +762,11 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
 
       const conceptoFinal = tipo === "Préstamo" ? concepto : (categoria !== "General" ? `[${categoria}] ${concepto}`.trim() : concepto);
       
-      // Registro el movimiento principal
       await fetch(`${API}/movimientos`, { 
         method: 'POST', headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`}, 
         body: JSON.stringify({ cuentaId: Number(targetId), tipo, monto: finalMonto, concepto: conceptoFinal, fecha: fecha ? new Date(fecha + "T12:00:00").toISOString() : new Date().toISOString() }) 
       });
 
-      // ¡AQUÍ ESTÁ LA NUEVA LÓGICA EXCLUSIVA PARA GASTO Y PRÉSTAMO!
-      // Si elegiste una cuenta de origen para que se descuente...
       if ((tipo === 'Préstamo' || tipo === 'Gasto') && origenId) {
         await fetch(`${API}/movimientos`, { 
           method: 'POST', headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`}, 
@@ -764,7 +774,6 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
         });
       }
 
-      // Si fue un abono a una cuenta de préstamo, activamos el reembolso hacia nuestro banco
       let refundObject = null;
       if (tipo === "Ingreso") {
         const targetCuenta = cuentas.find(c => c.id === Number(targetId));
@@ -841,7 +850,6 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
             <input type="date" required value={fecha} onChange={e => setFecha(e.target.value)} className={inputClass} />
           </div>
 
-          {/* SÓLO VISIBLE EN PRÉSTAMO Y GASTO */}
           {(tipo === 'Préstamo' || tipo === 'Gasto') && (
             <div className={`p-5 rounded-[20px] border mt-2 ${isDarkMode ? 'bg-[#111827] border-[#374151]' : 'bg-white border-[#E2E8F0]'}`}>
               <label className={`block text-[11px] font-medium ${textMuted} uppercase tracking-widest mb-2`}>¿Descontar de alguna cuenta tuya?</label>
