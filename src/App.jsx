@@ -290,7 +290,8 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
             const concepto = t.concepto || "";
             
             // FILTROS ESTRICTOS: No considerar transferencias ni devoluciones de préstamos
-            const isTransfer = concepto.includes("[Transferencia]");
+            // Incluimos [Pago de] para ignorar los descuentos secundarios de gastos con otra cuenta
+            const isTransfer = concepto.includes("[Transferencia]") || concepto.includes("[Pago de]");
             const isCapitalDevuelto = concepto.includes("[Capital Devuelto]");
             const isPrestamoOtorgado = concepto.includes("[Préstamo Otorgado]");
 
@@ -471,7 +472,7 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
           <h2 className="text-[40px] font-semibold text-[#F43F5E] tracking-tighter leading-none"><AnimatedCounter value={metricas.gastos} /></h2>
         </div>
         <div className={`${cardClass} p-8 flex flex-col justify-center`}>
-          <p className={`uppercase tracking-widest text-xs font-medium ${textMuted} mb-2`}>Deuda Activa</p>
+          <p className={`uppercase tracking-widest text-xs font-medium ${textMuted} mb-2`}>Deuda Activa (A tu favor)</p>
           <h2 className="text-[40px] font-semibold text-[#1E293B] dark:text-[#F9FAFB] tracking-tighter leading-none"><AnimatedCounter value={metricas.deuda} /></h2>
         </div>
       </div>
@@ -699,7 +700,6 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    // Extraemos únicamente los números del formato "$16,000" para procesar el float
     const finalMonto = parseFloat(monto.replace(/[^0-9]/g, ''));
     if (!finalMonto || isNaN(finalMonto)) return showToast("Monto inválido", "error");
 
@@ -749,15 +749,18 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
 
       const conceptoFinal = tipo === "Préstamo" ? concepto : (categoria !== "General" ? `[${categoria}] ${concepto}`.trim() : concepto);
       
+      // Registro el movimiento principal
       await fetch(`${API}/movimientos`, { 
         method: 'POST', headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`}, 
         body: JSON.stringify({ cuentaId: Number(targetId), tipo, monto: finalMonto, concepto: conceptoFinal, fecha: fecha ? new Date(fecha + "T12:00:00").toISOString() : new Date().toISOString() }) 
       });
 
-      if (tipo === 'Préstamo' && origenId) {
+      // ¡AQUÍ ESTÁ LA NUEVA LÓGICA EXCLUSIVA PARA GASTO Y PRÉSTAMO!
+      // Si elegiste una cuenta de origen para que se descuente...
+      if ((tipo === 'Préstamo' || tipo === 'Gasto') && origenId) {
         await fetch(`${API}/movimientos`, { 
           method: 'POST', headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`}, 
-          body: JSON.stringify({ cuentaId: Number(origenId), tipo: "Gasto", monto: finalMonto, concepto: `[Préstamo Otorgado] a ${targetName}`, fecha: fecha ? new Date(fecha + "T12:00:00").toISOString() : new Date().toISOString() }) 
+          body: JSON.stringify({ cuentaId: Number(origenId), tipo: "Gasto", monto: finalMonto, concepto: tipo === "Préstamo" ? `[Préstamo Otorgado] a ${targetName}` : `[Pago de] ${targetName}`, fecha: fecha ? new Date(fecha + "T12:00:00").toISOString() : new Date().toISOString() }) 
         });
       }
 
@@ -838,11 +841,12 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
             <input type="date" required value={fecha} onChange={e => setFecha(e.target.value)} className={inputClass} />
           </div>
 
-          {tipo === 'Préstamo' && (
+          {/* SÓLO VISIBLE EN PRÉSTAMO Y GASTO */}
+          {(tipo === 'Préstamo' || tipo === 'Gasto') && (
             <div className={`p-5 rounded-[20px] border mt-2 ${isDarkMode ? 'bg-[#111827] border-[#374151]' : 'bg-white border-[#E2E8F0]'}`}>
               <label className={`block text-[11px] font-medium ${textMuted} uppercase tracking-widest mb-2`}>¿Descontar de alguna cuenta tuya?</label>
               <select value={origenId} onChange={e => setOrigenId(e.target.value)} className={`${inputClass} !py-3`}>
-                <option value="">No descontar (Solo registrar la deuda)</option>
+                <option value="">No descontar (Solo registrar {tipo === 'Préstamo' ? 'la deuda' : 'el gasto'})</option>
                 {cuentas.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
               </select>
             </div>
