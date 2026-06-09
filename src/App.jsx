@@ -258,7 +258,7 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
   };
 
   // ==========================================
-  // LÓGICA FINANCIERA (Aislada y Exacta)
+  // LÓGICA FINANCIERA CORREGIDA Y AISLADA
   // ==========================================
   const metricas = useMemo(() => {
     let ingresos = 0, gastos = 0, deuda = 0;
@@ -267,8 +267,6 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
 
     cuentas.forEach(u => {
       const txs = u.transacciones || [];
-      
-      // Si la cuenta tiene al menos un préstamo otorgado, se aísla como Cuenta por Cobrar
       const isLoanAccount = txs.some(t => t.tipo === "Préstamo" && (!t.concepto || !t.concepto.includes("[Préstamo Otorgado]")));
       
       let balanceCuenta = 0;
@@ -277,19 +275,15 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
          if(t.tipo === 'Gasto' || t.tipo === 'Préstamo') balanceCuenta -= t.monto;
       });
 
-      // Cálculo de DEUDA ACTIVA
       if (isLoanAccount) {
         if (balanceCuenta < 0) deuda += Math.abs(balanceCuenta);
       }
 
-      // Cálculo de INGRESOS y GASTOS REALES
       if (!isLoanAccount) {
         txs.forEach(t => {
           const fechaTx = new Date(t.fecha);
           if (fechaTx.getMonth() === mesActual && fechaTx.getFullYear() === anioActual) {
             const concepto = t.concepto || "";
-            
-            // Ignorar transferencias y abonos recuperados en la sumatoria mensual de ingresos/gastos
             const isTransfer = concepto.includes("[Transferencia]") || concepto.includes("[Pago de]");
             const isCapitalDevuelto = concepto.includes("[Capital Devuelto]");
             const isPrestamoOtorgado = concepto.includes("[Préstamo Otorgado]");
@@ -307,7 +301,10 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
     return { ingresos, gastos, deuda };
   }, [cuentas]);
 
-  const toggleRow = (id) => setExpandedRows(prev => ({ ...prev, [id]: !prev[id] }));
+  // Cierra todas las filas y abre solo la seleccionada
+  const toggleRow = (id) => {
+    setExpandedRows(prev => prev[id] ? {} : { [id]: true });
+  };
 
   const confirmDelete = async () => {
     try {
@@ -460,7 +457,7 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
         </div>
       </header>
 
-      {/* MÉTRICAS (CORRECCIÓN 1: Centrado de contenido) */}
+      {/* MÉTRICAS (CENTRADAS) */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div className={`${cardClass} p-8 flex flex-col items-center justify-center text-center`}>
           <p className={`uppercase tracking-widest text-xs font-medium ${textMuted} mb-2`}>Ingresos (Mes)</p>
@@ -516,10 +513,12 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
           {loading ? (
             <div className={`p-16 text-center ${textMuted} font-medium animate-pulse`}>Cargando datos...</div>
           ) : (
-            <table className="w-full text-left border-collapse min-w-[800px]">
+            <table className="w-full text-left border-collapse min-w-[900px]">
               <thead>
                 <tr className="border-b border-[#E2E8F0] dark:border-[#374151] bg-[#F4F7FB]/50 dark:bg-[#111827]/50">
-                  <th className={`px-8 py-4 text-[11px] font-medium uppercase tracking-widest ${textMuted}`}>Registro / Categoría</th>
+                  {/* Ahora la tabla principal tiene 4 columnas exactas */}
+                  <th className={`px-8 py-4 text-[11px] font-medium uppercase tracking-widest ${textMuted}`}>Registro</th>
+                  <th className={`px-8 py-4 text-[11px] font-medium uppercase tracking-widest ${textMuted}`}>Tipo</th>
                   <th className={`px-8 py-4 text-[11px] font-medium uppercase tracking-widest ${textMuted}`}>Balance</th>
                   <th className={`px-8 py-4 text-[11px] font-medium uppercase tracking-widest ${textMuted} text-right`}>Acciones</th>
                 </tr>
@@ -540,21 +539,37 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
                   else if (isLoan) colorSaldo = isDarkMode ? "text-[#D1D5DB]" : "text-[#1E293B]"; 
                   else if (balanceCuenta < 0) colorSaldo = "text-[#F43F5E]"; 
 
+                  // Determinar tipo de cuenta principal para la nueva columna "Tipo"
+                  let mainType = "General";
+                  if (isLoan) mainType = "Préstamo";
+                  else if (txs.some(t => t.tipo === 'Ingreso')) mainType = "Ingreso";
+                  else if (txs.some(t => t.tipo === 'Gasto')) mainType = "Gasto";
+
                   const txFiltradas = filterMonth ? txs.filter(t => t.fecha.startsWith(filterMonth)) : txs;
                   if (filterMonth && txFiltradas.length === 0) return null;
 
+                  const isRowOpen = expandedRows[cuenta.id];
+
                   return (
                     <React.Fragment key={cuenta.id}>
-                      <tr className="border-b border-[#E2E8F0] dark:border-[#374151] hover:bg-white dark:hover:bg-[#273449] transition-all duration-200 group">
-                        <td className="px-8 py-6">
+                      {/* --- FILA PRINCIPAL --- */}
+                      <tr className={`border-b border-[#E2E8F0] dark:border-[#374151] hover:bg-white dark:hover:bg-[#273449] transition-all duration-200 group ${isRowOpen ? (isDarkMode ? 'bg-[#273449]' : 'bg-white') : ''}`}>
+                        <td className="px-8 py-5">
                           <div className={`text-[10px] font-medium tracking-widest ${textMuted} mb-1 opacity-70`}>ID {cuenta.id}</div>
-                          <div className="font-medium text-base">{cuenta.nombre}</div>
+                          <div className="font-medium text-base text-[#1E293B] dark:text-[#F9FAFB]">{cuenta.nombre}</div>
                         </td>
-                        <td className={`px-8 py-6 font-semibold text-xl tracking-tight ${colorSaldo}`}>
+                        <td className="px-8 py-5">
+                          <span className={`px-3 py-1 rounded-md text-[11px] font-medium bg-[#E2E8F0]/50 text-[#475569] dark:bg-[#374151]/50 dark:text-[#D1D5DB]`}>
+                            {mainType}
+                          </span>
+                        </td>
+                        <td className={`px-8 py-5 font-semibold text-xl tracking-tight ${colorSaldo}`}>
                           {formatMoney(Math.abs(balanceCuenta))}
                         </td>
-                        <td className="px-8 py-6 flex justify-end gap-2">
-                          <button onClick={() => toggleRow(cuenta.id)} className={`${iconBtnClass} bg-[#F4F7FB] dark:bg-[#111827] ${textSecondary} hover:text-[#6366F1] dark:hover:text-indigo-400`}><IconEye /></button>
+                        <td className="px-8 py-5 flex justify-end gap-2">
+                          <button onClick={() => toggleRow(cuenta.id)} className={`${iconBtnClass} ${isRowOpen ? 'bg-[#6366F1] text-white' : `bg-[#F4F7FB] dark:bg-[#111827] ${textSecondary} hover:text-[#6366F1] dark:hover:text-indigo-400`}`}>
+                            <IconEye />
+                          </button>
                           <button onClick={() => generarPDF(cuenta)} className={`${iconBtnClass} bg-[#F4F7FB] dark:bg-[#111827] ${textSecondary} hover:text-[#6366F1] dark:hover:text-indigo-400`}><IconPDF /></button>
                           <button onClick={() => generarCSV(cuenta)} className={`${iconBtnClass} bg-[#F4F7FB] dark:bg-[#111827] ${textSecondary} hover:text-[#10B981] dark:hover:text-emerald-400`}><IconCSV /></button>
                           <button onClick={() => setEditModal({ isOpen: true, id: cuenta.id, name: cuenta.nombre, newName: cuenta.nombre })} className={`${iconBtnClass} bg-[#F4F7FB] dark:bg-[#111827] ${textSecondary} hover:text-[#F59E0B] dark:hover:text-amber-400`}><IconEdit /></button>
@@ -562,63 +577,57 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
                         </td>
                       </tr>
 
-                      {/* CORRECCIÓN 3 y 4: VISTA DE DETALLES ESTRUCTURADA EN DOS COLUMNAS */}
-                      {expandedRows[cuenta.id] && (
-                        <tr>
-                          <td colSpan="3" className="p-0 bg-[#F4F7FB]/50 dark:bg-[#0B1120]/40 border-b border-[#E2E8F0] dark:border-[#374151]">
-                            <div className="p-6 md:p-8">
-                              {txFiltradas.length === 0 ? (
-                                <p className={`text-sm font-medium ${textSecondary} text-center py-4`}>Sin movimientos en este periodo.</p>
-                              ) : (
-                                <div className="flex flex-col gap-4">
-                                  {txFiltradas.map(t => {
-                                    let label = t.tipo;
-                                    if (t.concepto && t.concepto.includes("[Préstamo Otorgado]")) label = "Préstamo";
-                                    
-                                    let badgeClass = "bg-[#E2E8F0] text-[#64748B] dark:bg-[#374151] dark:text-[#D1D5DB]";
-                                    if (label === 'Ingreso' || label === 'Abono') badgeClass = "bg-[#10B981]/10 text-[#10B981] dark:bg-[#10B981]/20";
-                                    if (label === 'Gasto') badgeClass = "bg-[#F43F5E]/10 text-[#F43F5E] dark:bg-[#F43F5E]/20";
-                                    if (label === 'Préstamo') badgeClass = "bg-[#6366F1]/10 text-[#6366F1] dark:bg-[#6366F1]/20";
+                      {/* --- FILAS EXPANDIDAS DE DETALLE --- */}
+                      {/* Respeta las mismas 4 columnas de la tabla */}
+                      
+                      {isRowOpen && txFiltradas.length === 0 && (
+                        <tr className="bg-[#F8FAFC] dark:bg-[#111827] border-b border-[#E2E8F0] dark:border-[#374151] animate-in fade-in duration-300">
+                          <td colSpan="4" className={`px-8 py-6 text-center text-sm font-medium ${textSecondary}`}>
+                            Sin movimientos en este periodo.
+                          </td>
+                        </tr>
+                      )}
 
-                                    return (
-                                      <div key={t.id} className={`p-6 rounded-[24px] border ${isDarkMode ? 'bg-[#111827] border-[#374151]' : 'bg-white border-[#E2E8F0]'} shadow-sm transition-all hover:shadow-md`}>
-                                        <div className="flex flex-col gap-3 text-sm">
-                                          
-                                          <div className="flex items-center">
-                                            <span className={`w-28 md:w-32 font-medium ${textSecondary}`}>Fecha</span>
-                                            <span className="font-medium text-[#1E293B] dark:text-[#F9FAFB]">{new Date(t.fecha).toLocaleDateString('es-MX')}</span>
-                                          </div>
-                                          
-                                          <div className="flex items-center">
-                                            <span className={`w-28 md:w-32 font-medium ${textSecondary}`}>Tipo</span>
-                                            <span>
-                                              <span className={`px-2.5 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${badgeClass}`}>{label}</span>
-                                            </span>
-                                          </div>
-                                          
-                                          <div className="flex items-center">
-                                            <span className={`w-28 md:w-32 font-medium ${textSecondary}`}>Monto</span>
-                                            <span className="font-semibold text-[#1E293B] dark:text-[#F9FAFB]">{formatMoney(t.monto)}</span>
-                                          </div>
-                                          
-                                          <div className="flex items-start">
-                                            <span className={`w-28 md:w-32 font-medium ${textSecondary} mt-0.5`}>Concepto</span>
-                                            <span className="font-medium text-[#1E293B] dark:text-[#F9FAFB] flex-1 leading-relaxed">{t.concepto || "-"}</span>
-                                          </div>
+                      {isRowOpen && txFiltradas.map((t, idx) => {
+                        let label = t.tipo;
+                        if (t.concepto && t.concepto.includes("[Préstamo Otorgado]")) label = "Préstamo";
+                        
+                        let badgeClass = "bg-[#E2E8F0] text-[#64748B] dark:bg-[#374151] dark:text-[#D1D5DB]";
+                        if (label === 'Ingreso' || label === 'Abono') badgeClass = "bg-[#10B981]/10 text-[#10B981] dark:bg-[#10B981]/20";
+                        if (label === 'Gasto') badgeClass = "bg-[#F43F5E]/10 text-[#F43F5E] dark:bg-[#F43F5E]/20";
+                        if (label === 'Préstamo') badgeClass = "bg-[#6366F1]/10 text-[#6366F1] dark:bg-[#6366F1]/20";
 
-                                        </div>
-                                      </div>
-                                    )
-                                  })}
-                                  
-                                  {!filterMonth && txFiltradas.length > 0 && (
-                                    <button onClick={() => loadMoreTransactions(cuenta.id, cuenta.transacciones.length)} disabled={loadingMore} className={`mt-2 w-full py-4 text-xs font-medium uppercase tracking-wider rounded-[20px] bg-white dark:bg-[#1F2937] border border-[#E2E8F0] dark:border-[#374151] ${textSecondary} hover:text-[#6366F1] hover:shadow-md transition-all disabled:opacity-50`}>
-                                      {loadingMore ? 'Cargando...' : 'Cargar historial anterior'}
-                                    </button>
-                                  )}
-                                </div>
-                              )}
-                            </div>
+                        const isLast = idx === txFiltradas.length - 1;
+
+                        return (
+                          <tr key={t.id} className={`bg-[#F8FAFC] dark:bg-[#111827] ${isLast ? 'border-b border-[#E2E8F0] dark:border-[#374151]' : 'border-b border-dashed border-[#E2E8F0] dark:border-[#374151]'} hover:bg-white dark:hover:bg-[#1F2937]/50 transition-colors animate-in fade-in duration-300`}>
+                            {/* Columna Registro -> Fecha */}
+                            <td className={`px-8 py-4 text-sm font-medium ${textSecondary}`}>
+                              {new Date(t.fecha).toLocaleDateString('es-MX')}
+                            </td>
+                            {/* Columna Tipo -> Tipo de Movimiento */}
+                            <td className="px-8 py-4">
+                              <span className={`px-2.5 py-1 rounded-md text-[10px] font-medium uppercase tracking-wider ${badgeClass}`}>{label}</span>
+                            </td>
+                            {/* Columna Balance -> Monto */}
+                            <td className={`px-8 py-4 text-sm font-medium text-[#1E293B] dark:text-[#F9FAFB]`}>
+                              {formatMoney(t.monto)}
+                            </td>
+                            {/* Columna Acciones -> Concepto */}
+                            <td className={`px-8 py-4 text-sm font-medium ${textSecondary} text-right`}>
+                              {t.concepto || "-"}
+                            </td>
+                          </tr>
+                        );
+                      })}
+
+                      {/* Botón de cargar más (si aplica) anidado igual en las 4 columnas */}
+                      {isRowOpen && !filterMonth && txFiltradas.length > 0 && (
+                        <tr className="bg-[#F8FAFC] dark:bg-[#111827] border-b border-[#E2E8F0] dark:border-[#374151]">
+                          <td colSpan="4" className="px-8 py-4">
+                            <button onClick={() => loadMoreTransactions(cuenta.id, cuenta.transacciones.length)} disabled={loadingMore} className={`w-full max-w-sm mx-auto block py-3 text-xs font-medium uppercase tracking-wider rounded-[16px] bg-white dark:bg-[#1F2937] border border-[#E2E8F0] dark:border-[#374151] ${textSecondary} hover:text-[#6366F1] transition-colors disabled:opacity-50 shadow-sm hover:shadow-md`}>
+                              {loadingMore ? 'Cargando...' : 'Cargar historial anterior'}
+                            </button>
                           </td>
                         </tr>
                       )}
