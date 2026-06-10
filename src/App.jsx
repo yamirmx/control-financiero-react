@@ -78,7 +78,11 @@ const IconPDF = () => <svg width="18" height="18" fill="none" stroke="currentCol
 const IconCSV = () => <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>;
 const IconPlus = () => <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M12 4v16m8-8H4"></path></svg>;
 const IconSearch = () => <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>;
-const IconWallet = () => <svg width="32" height="32" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path></svg>;
+const IconWallet = (props) => <svg width={props.width || "32"} height={props.height || "32"} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" {...props}><path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path></svg>;
+const IconList = (props) => <svg width={props.width || "24"} height={props.height || "24"} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>;
+const IconUsers = (props) => <svg width={props.width || "24"} height={props.height || "24"} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>;
+const IconHandCoin = (props) => <svg width={props.width || "24"} height={props.height || "24"} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>;
+const IconClock = (props) => <svg width={props.width || "24"} height={props.height || "24"} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>;
 
 // ==========================================
 // APP COMPONENT
@@ -99,7 +103,7 @@ export default function App() {
     }
   }, [isDarkMode]);
 
-  // CORRECCIÓN PDF: Carga secuencial para evitar race condition
+  // CARGA DE JPDF EVITANDO RACE CONDITION
   useEffect(() => {
     loadScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js").then(() => {
       loadScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js");
@@ -120,7 +124,6 @@ export default function App() {
   return (
     <div className={`min-h-screen transition-colors duration-300 font-sans antialiased ${isDarkMode ? 'bg-[#111827] text-[#F9FAFB]' : 'bg-[#F4F7FB] text-[#1E293B]'}`}>
       
-      {/* Sistema de Toasts Premium */}
       {toast.show && (
         <div className={`fixed top-6 right-6 px-6 py-4 rounded-2xl shadow-[0_8px_30px_rgba(0,0,0,0.12)] z-50 transform transition-all flex items-center gap-3 backdrop-blur-md animate-in slide-in-from-top-5
           ${toast.type === 'success' ? 'bg-[#10B981]/90 text-white' : toast.type === 'error' ? 'bg-[#F43F5E]/90 text-white' : 'bg-[#1E293B]/90 text-white'}`}>
@@ -216,7 +219,7 @@ function AuthScreen({ setToken, setUserEmail, showToast, isDarkMode }) {
 }
 
 // ==========================================
-// DASHBOARD
+// DASHBOARD (Master View)
 // ==========================================
 function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, showToast }) {
   const [cuentasRaw, setCuentasRaw] = useState([]);
@@ -264,7 +267,7 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
   };
 
   // ==========================================
-  // ARQUITECTURA DE CUENTAS (Enriquecimiento Dinámico)
+  // LÓGICA E INFRAESTRUCTURA (INTACTAS)
   // ==========================================
   const cuentas = useMemo(() => {
     return cuentasRaw.map(c => {
@@ -292,9 +295,6 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
     });
   }, [cuentasRaw]);
 
-  // ==========================================
-  // LÓGICA FINANCIERA (Blindada)
-  // ==========================================
   const metricas = useMemo(() => {
     let ingresos = 0, gastos = 0, deuda = 0;
     const mesActual = new Date().getMonth();
@@ -326,6 +326,24 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
       }
     });
     return { ingresos, gastos, deuda };
+  }, [cuentas]);
+
+  // Cálculos para el Resumen Financiero
+  const balanceNeto = metricas.ingresos - metricas.gastos - metricas.deuda;
+  const cuentasActivas = cuentas.length;
+  const deudoresActivos = cuentas.filter(c => c.accountType === 'loan' && c.balanceCuenta < 0).length;
+  const prestamosPendientes = metricas.deuda;
+
+  const ultimoMovimiento = useMemo(() => {
+      let allTx = [];
+      cuentas.forEach(c => {
+          (c.transacciones || []).forEach(t => {
+              allTx.push({ ...t, cuentaNombre: c.nombre });
+          });
+      });
+      if (allTx.length === 0) return null;
+      allTx.sort((a, b) => new Date(b.fecha) - new Date(a.fecha) || b.id - a.id);
+      return allTx[0];
   }, [cuentas]);
 
   const toggleRow = (id) => {
@@ -365,14 +383,11 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
     link.click();
   };
 
-  // CORRECCIÓN PDF: Validación de seguridad
   const generarPDF = (cuenta) => {
     const windowJsPDF = window.jspdf?.jsPDF;
     if (!windowJsPDF) return showToast("Preparando PDF...", "info");
 
     const doc = new windowJsPDF();
-    
-    // Verificamos si el plugin autoTable ya está adjunto
     if (typeof doc.autoTable !== 'function') {
         return showToast("Cargando complementos del PDF, intenta de nuevo...", "info");
     }
@@ -395,12 +410,15 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
     if (total === 0) return null;
     const r = 50; const circ = 2 * Math.PI * r;
     return {
-      r, circ,
+      r, circ, total,
       ingDash: `${(metricas.ingresos / total) * circ} ${circ}`,
       gasDash: `${(metricas.gastos / total) * circ} ${circ}`,
       deuDash: `${(metricas.deuda / total) * circ} ${circ}`,
       gasOffset: -((metricas.ingresos / total) * circ),
-      deuOffset: -(((metricas.ingresos + metricas.gastos) / total) * circ)
+      deuOffset: -(((metricas.ingresos + metricas.gastos) / total) * circ),
+      pctIngresos: ((metricas.ingresos / total) * 100).toFixed(1),
+      pctGastos: ((metricas.gastos / total) * 100).toFixed(1),
+      pctDeuda: ((metricas.deuda / total) * 100).toFixed(1),
     };
   }, [metricas]);
 
@@ -471,7 +489,7 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
         </div>
       </header>
 
-      {/* MÉTRICAS (CENTRADAS) */}
+      {/* MÉTRICAS SUPERIORES */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div className={`${cardClass} p-8 flex flex-col items-center justify-center text-center`}>
           <p className={`uppercase tracking-widest text-xs font-medium ${textMuted} mb-2`}>Ingresos (Mes)</p>
@@ -487,27 +505,135 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
         </div>
       </div>
 
-      {/* GRÁFICO */}
-      <div className={`${cardClass} mb-8 flex flex-col justify-center items-center py-12 px-6`}>
-        {chartData ? (
-          <div className="flex flex-col sm:flex-row items-center gap-12 justify-center w-full">
-            <div className="relative">
-              <svg width="200" height="200" viewBox="0 0 120 120" className="transform -rotate-90 drop-shadow-xl">
-                <circle cx="60" cy="60" r={chartData.r} fill="transparent" stroke={isDarkMode ? '#273449' : '#E2E8F0'} strokeWidth="12" />
-                <circle cx="60" cy="60" r={chartData.r} fill="transparent" stroke="#10B981" strokeWidth="12" strokeDasharray={chartData.ingDash} />
-                <circle cx="60" cy="60" r={chartData.r} fill="transparent" stroke="#F43F5E" strokeWidth="12" strokeDasharray={chartData.gasDash} strokeDashoffset={chartData.gasOffset} />
-                <circle cx="60" cy="60" r={chartData.r} fill="transparent" stroke={isDarkMode ? '#FFFFFF' : '#1E293B'} strokeWidth="12" strokeDasharray={chartData.deuDash} strokeDashoffset={chartData.deuOffset} />
-              </svg>
+      {/* ======================================= */}
+      {/* NUEVO DASHBOARD VISUAL (RESUMEN FINANCIERO) */}
+      {/* ======================================= */}
+      <div className={`${cardClass} mb-8 overflow-hidden`}>
+        <div className="flex flex-col lg:flex-row">
+          
+          {/* DISTRIBUCIÓN FINANCIERA (IZQUIERDA) */}
+          <div className="flex-1 p-8 lg:border-r border-[#E2E8F0] dark:border-[#374151] flex flex-col items-center justify-center">
+            <h3 className={`text-xs font-bold uppercase tracking-widest ${textMuted} w-full text-left mb-6`}>Distribución Financiera</h3>
+            
+            {chartData ? (
+              <div className="flex flex-col xl:flex-row items-center justify-center gap-10 w-full">
+                
+                {/* Donut Wrapper */}
+                <div className="relative flex items-center justify-center">
+                  <svg width="170" height="170" viewBox="0 0 120 120" className="transform -rotate-90 drop-shadow-md">
+                    <circle cx="60" cy="60" r={chartData.r} fill="transparent" stroke={isDarkMode ? '#273449' : '#E2E8F0'} strokeWidth="12" />
+                    <circle cx="60" cy="60" r={chartData.r} fill="transparent" stroke="#10B981" strokeWidth="12" strokeDasharray={chartData.ingDash} />
+                    <circle cx="60" cy="60" r={chartData.r} fill="transparent" stroke="#F43F5E" strokeWidth="12" strokeDasharray={chartData.gasDash} strokeDashoffset={chartData.gasOffset} />
+                    <circle cx="60" cy="60" r={chartData.r} fill="transparent" stroke={isDarkMode ? '#FFFFFF' : '#1E293B'} strokeWidth="12" strokeDasharray={chartData.deuDash} strokeDashoffset={chartData.deuOffset} />
+                  </svg>
+                  {/* Centro del Donut */}
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="text-xl font-bold text-[#1E293B] dark:text-[#F9FAFB]">{formatMoney(balanceNeto)}</span>
+                    <span className={`text-[9px] uppercase tracking-widest ${textMuted} mt-1`}>Balance Neto</span>
+                  </div>
+                </div>
+
+                {/* Leyenda Compacta */}
+                <div className="flex flex-col gap-4">
+                  <div className="flex items-start gap-3 w-40">
+                    <span className="w-3 h-3 rounded-full bg-[#10B981] mt-1"></span>
+                    <div className="flex flex-col w-full">
+                      <div className="flex justify-between items-center w-full">
+                        <span className="text-sm font-semibold text-[#1E293B] dark:text-[#F9FAFB]">Ingresos</span>
+                        <span className={`text-xs font-medium ${textSecondary}`}>{chartData.pctIngresos}%</span>
+                      </div>
+                      <span className={`text-sm font-medium ${textMuted}`}>{formatMoney(metricas.ingresos)}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 w-40">
+                    <span className="w-3 h-3 rounded-full bg-[#F43F5E] mt-1"></span>
+                    <div className="flex flex-col w-full">
+                      <div className="flex justify-between items-center w-full">
+                        <span className="text-sm font-semibold text-[#1E293B] dark:text-[#F9FAFB]">Gastos</span>
+                        <span className={`text-xs font-medium ${textSecondary}`}>{chartData.pctGastos}%</span>
+                      </div>
+                      <span className={`text-sm font-medium ${textMuted}`}>{formatMoney(metricas.gastos)}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 w-40">
+                    <span className={`w-3 h-3 rounded-full ${isDarkMode ? 'bg-white' : 'bg-[#1E293B]'} mt-1`}></span>
+                    <div className="flex flex-col w-full">
+                      <div className="flex justify-between items-center w-full">
+                        <span className="text-sm font-semibold text-[#1E293B] dark:text-[#F9FAFB]">Deuda Activa</span>
+                        <span className={`text-xs font-medium ${textSecondary}`}>{chartData.pctDeuda}%</span>
+                      </div>
+                      <span className={`text-sm font-medium ${textMuted}`}>{formatMoney(metricas.deuda)}</span>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            ) : (
+              <p className={`${textMuted} font-medium text-sm text-center w-full`}>Registra movimientos para visualizar tu actividad</p>
+            )}
+          </div>
+
+          {/* RESUMEN FINANCIERO (DERECHA) */}
+          <div className="flex-1 p-8 flex flex-col justify-center bg-[#F8FAFC] dark:bg-[#111827]/30">
+            <h3 className={`text-xs font-bold uppercase tracking-widest ${textMuted} mb-6`}>Resumen Financiero</h3>
+            
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-[12px] bg-[#10B981]/10 text-[#10B981] flex items-center justify-center"><IconWallet width="20" height="20" /></div>
+                  <span className="text-sm font-medium text-[#1E293B] dark:text-[#F9FAFB]">Balance Neto</span>
+                </div>
+                <span className="text-base font-bold text-[#10B981]">{formatMoney(balanceNeto)}</span>
+              </div>
+              
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-[12px] bg-[#6366F1]/10 text-[#6366F1] flex items-center justify-center"><IconList width="20" height="20" /></div>
+                  <span className="text-sm font-medium text-[#1E293B] dark:text-[#F9FAFB]">Cuentas activas</span>
+                </div>
+                <span className="text-base font-semibold text-[#1E293B] dark:text-[#F9FAFB]">{cuentasActivas}</span>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-[12px] bg-[#F43F5E]/10 text-[#F43F5E] flex items-center justify-center"><IconUsers width="20" height="20" /></div>
+                  <span className="text-sm font-medium text-[#1E293B] dark:text-[#F9FAFB]">Deudores activos</span>
+                </div>
+                <span className="text-base font-semibold text-[#1E293B] dark:text-[#F9FAFB]">{deudoresActivos}</span>
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-[12px] bg-[#F59E0B]/10 text-[#F59E0B] flex items-center justify-center"><IconHandCoin width="20" height="20" /></div>
+                  <span className="text-sm font-medium text-[#1E293B] dark:text-[#F9FAFB]">Préstamos pendientes</span>
+                </div>
+                <span className="text-base font-semibold text-[#F59E0B]">{formatMoney(prestamosPendientes)}</span>
+              </div>
             </div>
-            <div className="flex flex-col gap-4 text-sm font-medium">
-              <div className="flex items-center gap-3"><span className="w-3 h-3 rounded-full bg-[#10B981]"></span> <span className={textSecondary}>Ingresos</span> <span className="text-[#1E293B] dark:text-[#F9FAFB] ml-auto font-semibold">{((metricas.ingresos / (metricas.ingresos + metricas.gastos + metricas.deuda)) * 100).toFixed(1)}%</span></div>
-              <div className="flex items-center gap-3"><span className="w-3 h-3 rounded-full bg-[#F43F5E]"></span> <span className={textSecondary}>Gastos</span> <span className="text-[#1E293B] dark:text-[#F9FAFB] ml-auto font-semibold">{((metricas.gastos / (metricas.ingresos + metricas.gastos + metricas.deuda)) * 100).toFixed(1)}%</span></div>
-              <div className="flex items-center gap-3"><span className={`w-3 h-3 rounded-full ${isDarkMode ? 'bg-white' : 'bg-[#1E293B]'}`}></span> <span className={textSecondary}>Deuda Activa</span> <span className="text-[#1E293B] dark:text-[#F9FAFB] ml-auto font-semibold">{((metricas.deuda / (metricas.ingresos + metricas.gastos + metricas.deuda)) * 100).toFixed(1)}%</span></div>
+
+            {/* Último Movimiento */}
+            <div className="mt-6 pt-6 border-t border-[#E2E8F0] dark:border-[#374151]">
+              <h4 className={`text-[10px] font-bold uppercase tracking-widest ${textMuted} mb-4`}>Último movimiento</h4>
+              {ultimoMovimiento ? (
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-[12px] bg-[#E2E8F0] dark:bg-[#374151] flex items-center justify-center ${textMuted}`}><IconClock width="20" height="20" /></div>
+                    <div className="flex flex-col">
+                      <span className="text-sm font-semibold text-[#1E293B] dark:text-[#F9FAFB] truncate max-w-[150px] sm:max-w-xs">{cleanConcepto(ultimoMovimiento.concepto) || ultimoMovimiento.cuentaNombre}</span>
+                      <span className={`text-sm font-bold ${ultimoMovimiento.tipo === 'Gasto' ? 'text-[#F43F5E]' : ultimoMovimiento.tipo === 'Ingreso' || ultimoMovimiento.tipo === 'Abono' ? 'text-[#10B981]' : 'text-[#6366F1]'}`}>
+                        {ultimoMovimiento.tipo === 'Gasto' ? '-' : '+'}{formatMoney(ultimoMovimiento.monto)}
+                      </span>
+                    </div>
+                  </div>
+                  <span className={`text-xs font-medium ${textSecondary}`}>{new Date(ultimoMovimiento.fecha).toLocaleDateString('es-MX')}</span>
+                </div>
+              ) : (
+                <p className={`text-sm ${textMuted}`}>Sin movimientos registrados</p>
+              )}
             </div>
           </div>
-        ) : (
-          <p className={`${textMuted} font-medium text-sm`}>Registra movimientos para visualizar tu actividad</p>
-        )}
+          
+        </div>
       </div>
 
       {/* TABLA DE CUENTAS */}
@@ -555,7 +681,6 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
 
                   return (
                     <React.Fragment key={cuenta.id}>
-                      {/* --- FILA PRINCIPAL --- */}
                       <tr className={`border-b border-[#E2E8F0] dark:border-[#374151] hover:bg-white dark:hover:bg-[#273449] transition-all duration-200 group ${isRowOpen ? (isDarkMode ? 'bg-[#273449]' : 'bg-white') : ''}`}>
                         <td className="px-8 py-5 text-left">
                           <div className={`text-[10px] font-medium tracking-widest ${textMuted} mb-1 opacity-70`}>ID {cuenta.id}</div>
@@ -584,7 +709,6 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
                         </td>
                       </tr>
 
-                      {/* --- SECCIÓN EXPANDIDA: TARJETAS (ESTILO SAAS) --- */}
                       {isRowOpen && (
                         <tr>
                           <td colSpan="4" className="p-0 bg-[#F8FAFC] dark:bg-[#0B1120]/40 border-b border-[#E2E8F0] dark:border-[#374151]">
