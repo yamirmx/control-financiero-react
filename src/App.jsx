@@ -103,7 +103,6 @@ export default function App() {
     }
   }, [isDarkMode]);
 
-  // CARGA DE JPDF EVITANDO RACE CONDITION
   useEffect(() => {
     loadScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js").then(() => {
       loadScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js");
@@ -328,7 +327,6 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
     return { ingresos, gastos, deuda };
   }, [cuentas]);
 
-  // Cálculos para el Resumen Financiero
   const balanceNeto = metricas.ingresos - metricas.gastos - metricas.deuda;
   const cuentasActivas = cuentas.length;
   const deudoresActivos = cuentas.filter(c => c.accountType === 'loan' && c.balanceCuenta < 0).length;
@@ -423,7 +421,10 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
   }, [metricas]);
 
   const cardClass = `rounded-[32px] transition-all border ${isDarkMode ? 'bg-[#1F2937] border-[#374151] shadow-2xl' : 'bg-[#F7F9FC] border-[#E2E8F0] shadow-[0_8px_30px_rgb(0,0,0,0.04)]'}`;
-  const iconBtnClass = `w-10 h-10 rounded-[12px] flex items-center justify-center transition-all duration-200 hover:scale-105 active:scale-95`;
+  
+  // Botones sutilmente más pequeños para mayor densidad y look profesional
+  const iconBtnClass = `w-9 h-9 rounded-[10px] flex items-center justify-center transition-all duration-200 hover:scale-105 active:scale-95`;
+  
   const textMuted = isDarkMode ? 'text-[#9CA3AF]' : 'text-[#64748B]';
   const textSecondary = isDarkMode ? 'text-[#D1D5DB]' : 'text-[#475569]';
 
@@ -505,20 +506,17 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
         </div>
       </div>
 
-      {/* ======================================= */}
-      {/* NUEVO DASHBOARD VISUAL (RESUMEN FINANCIERO) */}
-      {/* ======================================= */}
+      {/* DASHBOARD VISUAL (RESUMEN FINANCIERO) */}
       <div className={`${cardClass} mb-8 overflow-hidden`}>
         <div className="flex flex-col lg:flex-row">
           
           {/* DISTRIBUCIÓN FINANCIERA (IZQUIERDA) */}
-          <div className="flex-1 p-8 lg:border-r border-[#E2E8F0] dark:border-[#374151] flex flex-col items-center justify-center">
-            <h3 className={`text-xs font-bold uppercase tracking-widest ${textMuted} w-full text-left mb-6`}>Distribución Financiera</h3>
+          <div className="flex-1 p-8 lg:border-r border-[#E2E8F0] dark:border-[#374151] flex flex-col justify-start">
+            <h3 className={`text-[11px] font-bold uppercase tracking-widest ${textMuted} mb-6 text-left w-full`}>Distribución Financiera</h3>
             
             {chartData ? (
-              <div className="flex flex-col xl:flex-row items-center justify-center gap-10 w-full">
+              <div className="flex flex-col xl:flex-row items-center justify-center gap-10 w-full flex-1">
                 
-                {/* Donut Wrapper */}
                 <div className="relative flex items-center justify-center">
                   <svg width="170" height="170" viewBox="0 0 120 120" className="transform -rotate-90 drop-shadow-md">
                     <circle cx="60" cy="60" r={chartData.r} fill="transparent" stroke={isDarkMode ? '#273449' : '#E2E8F0'} strokeWidth="12" />
@@ -526,14 +524,12 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
                     <circle cx="60" cy="60" r={chartData.r} fill="transparent" stroke="#F43F5E" strokeWidth="12" strokeDasharray={chartData.gasDash} strokeDashoffset={chartData.gasOffset} />
                     <circle cx="60" cy="60" r={chartData.r} fill="transparent" stroke={isDarkMode ? '#FFFFFF' : '#1E293B'} strokeWidth="12" strokeDasharray={chartData.deuDash} strokeDashoffset={chartData.deuOffset} />
                   </svg>
-                  {/* Centro del Donut */}
                   <div className="absolute inset-0 flex flex-col items-center justify-center">
                     <span className="text-xl font-bold text-[#1E293B] dark:text-[#F9FAFB]">{formatMoney(balanceNeto)}</span>
                     <span className={`text-[9px] uppercase tracking-widest ${textMuted} mt-1`}>Balance Neto</span>
                   </div>
                 </div>
 
-                {/* Leyenda Compacta */}
                 <div className="flex flex-col gap-4">
                   <div className="flex items-start gap-3 w-40">
                     <span className="w-3 h-3 rounded-full bg-[#10B981] mt-1"></span>
@@ -574,10 +570,10 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
           </div>
 
           {/* RESUMEN FINANCIERO (DERECHA) */}
-          <div className="flex-1 p-8 flex flex-col justify-center bg-[#F8FAFC] dark:bg-[#111827]/30">
-            <h3 className={`text-xs font-bold uppercase tracking-widest ${textMuted} mb-6`}>Resumen Financiero</h3>
+          <div className="flex-1 p-8 flex flex-col justify-start bg-[#F8FAFC] dark:bg-[#111827]/30">
+            <h3 className={`text-[11px] font-bold uppercase tracking-widest ${textMuted} mb-6 text-left w-full`}>Resumen Financiero</h3>
             
-            <div className="flex flex-col gap-4">
+            <div className="flex flex-col gap-4 w-full flex-1 justify-center">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-[12px] bg-[#10B981]/10 text-[#10B981] flex items-center justify-center"><IconWallet width="20" height="20" /></div>
@@ -612,7 +608,7 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
             </div>
 
             {/* Último Movimiento */}
-            <div className="mt-6 pt-6 border-t border-[#E2E8F0] dark:border-[#374151]">
+            <div className="mt-6 pt-6 border-t border-[#E2E8F0] dark:border-[#374151] w-full">
               <h4 className={`text-[10px] font-bold uppercase tracking-widest ${textMuted} mb-4`}>Último movimiento</h4>
               {ultimoMovimiento ? (
                 <div className="flex items-center justify-between">
@@ -653,13 +649,14 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
           {loading ? (
             <div className={`p-16 text-center ${textMuted} font-medium animate-pulse`}>Cargando datos...</div>
           ) : (
-            <table className="w-full text-left border-collapse min-w-[900px]">
+            <table className="w-full text-left border-collapse min-w-[750px]">
               <thead>
                 <tr className="border-b border-[#E2E8F0] dark:border-[#374151] bg-[#F4F7FB]/50 dark:bg-[#111827]/50">
-                  <th className={`w-[30%] px-8 py-4 text-[11px] font-medium uppercase tracking-widest ${textMuted} text-left`}>Registro</th>
-                  <th className={`w-[20%] px-8 py-4 text-[11px] font-medium uppercase tracking-widest ${textMuted} text-center`}>Tipo</th>
-                  <th className={`w-[25%] px-8 py-4 text-[11px] font-medium uppercase tracking-widest ${textMuted} text-center`}>Balance</th>
-                  <th className={`w-[25%] px-8 py-4 text-[11px] font-medium uppercase tracking-widest ${textMuted} text-center`}>Acciones</th>
+                  {/* AJUSTE DE COLUMNAS PARA ALTA DENSIDAD Y LECTURA CONTINUA */}
+                  <th className={`w-[35%] px-6 py-4 text-[11px] font-bold uppercase tracking-widest ${textMuted} text-left`}>Registro</th>
+                  <th className={`w-[15%] px-6 py-4 text-[11px] font-bold uppercase tracking-widest ${textMuted} text-left`}>Tipo</th>
+                  <th className={`w-[15%] px-6 py-4 text-[11px] font-bold uppercase tracking-widest ${textMuted} text-left`}>Balance</th>
+                  <th className={`w-[35%] px-6 py-4 text-[11px] font-bold uppercase tracking-widest ${textMuted} text-left`}>Acciones</th>
                 </tr>
               </thead>
               <tbody>
@@ -681,23 +678,24 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
 
                   return (
                     <React.Fragment key={cuenta.id}>
-                      <tr className={`border-b border-[#E2E8F0] dark:border-[#374151] hover:bg-white dark:hover:bg-[#273449] transition-all duration-200 group ${isRowOpen ? (isDarkMode ? 'bg-[#273449]' : 'bg-white') : ''}`}>
-                        <td className="px-8 py-5 text-left">
+                      {/* --- FILA PRINCIPAL COMPACTA --- */}
+                      <tr className={`border-b border-[#E2E8F0] dark:border-[#374151] hover:bg-[#F8FAFC] dark:hover:bg-[#1F2937]/50 transition-all duration-200 group ${isRowOpen ? (isDarkMode ? 'bg-[#1F2937]/50' : 'bg-[#F8FAFC]') : ''}`}>
+                        <td className="px-6 py-3.5 text-left">
                           <div className={`text-[10px] font-medium tracking-widest ${textMuted} mb-1 opacity-70`}>ID {cuenta.id}</div>
                           <div className="font-medium text-base text-[#1E293B] dark:text-[#F9FAFB]">{cuenta.nombre}</div>
                         </td>
-                        <td className="px-8 py-5 text-center">
-                          <div className="flex justify-center">
+                        <td className="px-6 py-3.5 text-left">
+                          <div className="flex justify-start">
                             <span className={`px-3 py-1 rounded-md text-[11px] font-medium bg-[#E2E8F0]/50 text-[#475569] dark:bg-[#374151]/50 dark:text-[#D1D5DB]`}>
                               {mainType}
                             </span>
                           </div>
                         </td>
-                        <td className={`px-8 py-5 font-semibold text-xl tracking-tight text-center ${colorSaldo}`}>
+                        <td className={`px-6 py-3.5 font-semibold text-lg tracking-tight text-left ${colorSaldo}`}>
                           {formatMoney(Math.abs(cuenta.balanceCuenta))}
                         </td>
-                        <td className="px-8 py-5">
-                          <div className="flex justify-center items-center gap-2">
+                        <td className="px-6 py-3.5 text-left">
+                          <div className="flex justify-start items-center gap-1.5">
                             <button onClick={() => toggleRow(cuenta.id)} className={`${iconBtnClass} ${isRowOpen ? 'bg-[#6366F1] text-white shadow-md' : `bg-[#F4F7FB] dark:bg-[#111827] ${textSecondary} hover:text-[#6366F1] dark:hover:text-indigo-400`}`}>
                               <IconEye />
                             </button>
@@ -709,16 +707,17 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
                         </td>
                       </tr>
 
+                      {/* --- SECCIÓN EXPANDIDA --- */}
                       {isRowOpen && (
                         <tr>
                           <td colSpan="4" className="p-0 bg-[#F8FAFC] dark:bg-[#0B1120]/40 border-b border-[#E2E8F0] dark:border-[#374151]">
-                            <div className="p-6 md:p-8 animate-in fade-in slide-in-from-top-2 duration-300">
-                              <h4 className={`text-xs font-semibold uppercase tracking-widest ${textMuted} mb-6 ml-2`}>Historial de movimientos</h4>
+                            <div className="p-5 md:p-6 animate-in fade-in slide-in-from-top-2 duration-300">
+                              <h4 className={`text-[11px] font-bold uppercase tracking-widest ${textMuted} mb-5 ml-2`}>Historial de movimientos</h4>
                               
                               {txFiltradas.length === 0 ? (
                                 <p className={`text-sm font-medium ${textSecondary} ml-2`}>Sin movimientos en este periodo.</p>
                               ) : (
-                                <div className="flex flex-col gap-4">
+                                <div className="flex flex-col gap-3">
                                   {txFiltradas.map((t) => {
                                     let label = t.tipo;
                                     if (t.concepto && t.concepto.includes("[Préstamo Otorgado]")) label = "Préstamo";
@@ -730,25 +729,25 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
                                     if (label === 'Préstamo') dotClass = "bg-[#6366F1]";
 
                                     return (
-                                      <div key={t.id} className={`p-6 rounded-[24px] border ${isDarkMode ? 'bg-[#1F2937] border-[#374151]' : 'bg-white border-[#E2E8F0]'} shadow-sm hover:shadow-md transition-shadow flex flex-col gap-4`}>
+                                      <div key={t.id} className={`p-5 rounded-[20px] border ${isDarkMode ? 'bg-[#1F2937] border-[#374151]' : 'bg-white border-[#E2E8F0]'} shadow-sm hover:shadow-md transition-shadow flex flex-col gap-3`}>
                                         
                                         <div className="flex items-center gap-3">
-                                          <span className={`w-3 h-3 rounded-full ${dotClass}`}></span>
+                                          <span className={`w-2.5 h-2.5 rounded-full ${dotClass}`}></span>
                                           <span className="text-sm font-semibold text-[#1E293B] dark:text-[#F9FAFB] tracking-wide">{label}</span>
                                         </div>
                                         
-                                        <div className="pl-6 flex flex-col gap-3">
-                                          <div className={`text-sm font-medium ${textSecondary} text-left`}>
+                                        <div className="pl-5 flex flex-col gap-2">
+                                          <div className={`text-xs font-medium ${textSecondary} text-left`}>
                                             {new Date(t.fecha).toLocaleDateString('es-MX')}
                                           </div>
                                           
-                                          <div className="flex flex-col gap-1 items-start">
-                                            <span className={`text-[11px] font-medium uppercase tracking-widest ${textMuted}`}>Monto</span>
-                                            <span className="text-base font-semibold text-[#1E293B] dark:text-[#F9FAFB] text-left">{formatMoney(t.monto)}</span>
+                                          <div className="flex flex-col items-start">
+                                            <span className={`text-[10px] font-bold uppercase tracking-widest ${textMuted}`}>Monto</span>
+                                            <span className="text-sm font-semibold text-[#1E293B] dark:text-[#F9FAFB] text-left">{formatMoney(t.monto)}</span>
                                           </div>
                                           
-                                          <div className="flex flex-col gap-1 items-start">
-                                            <span className={`text-[11px] font-medium uppercase tracking-widest ${textMuted}`}>Concepto</span>
+                                          <div className="flex flex-col items-start">
+                                            <span className={`text-[10px] font-bold uppercase tracking-widest ${textMuted}`}>Concepto</span>
                                             <span className="text-sm font-medium text-[#1E293B] dark:text-[#F9FAFB] leading-relaxed text-left">
                                               {cleanConcepto(t.concepto)}
                                             </span>
@@ -762,7 +761,7 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
                               )}
                               
                               {!filterMonth && txFiltradas.length > 0 && (
-                                <button onClick={() => loadMoreTransactions(cuenta.id, cuenta.transacciones.length)} disabled={loadingMore} className={`mt-6 w-full max-w-sm mx-auto block py-4 text-xs font-medium uppercase tracking-wider rounded-[20px] bg-white dark:bg-[#1F2937] border border-[#E2E8F0] dark:border-[#374151] ${textSecondary} hover:text-[#6366F1] transition-colors disabled:opacity-50 shadow-sm hover:shadow-md`}>
+                                <button onClick={() => loadMoreTransactions(cuenta.id, cuenta.transacciones.length)} disabled={loadingMore} className={`mt-5 w-full max-w-sm mx-auto block py-3 text-xs font-bold uppercase tracking-wider rounded-[16px] bg-white dark:bg-[#1F2937] border border-[#E2E8F0] dark:border-[#374151] ${textSecondary} hover:text-[#6366F1] transition-colors disabled:opacity-50 shadow-sm hover:shadow-md`}>
                                   {loadingMore ? 'Cargando...' : 'Cargar historial anterior'}
                                 </button>
                               )}
