@@ -101,6 +101,7 @@ export default function App() {
     }
   }, [isDarkMode]);
 
+  // Carga secuencial para evitar race condition en PDF
   useEffect(() => {
     loadScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js").then(() => {
       loadScript("https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js");
@@ -266,7 +267,7 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
   const cuentas = useMemo(() => {
     return cuentasRaw.map(c => {
       const txs = c.transacciones || [];
-      const hasIngreso = txs.some(t => t.tipo === "Ingreso" && (!t.concepto || !t.concepto.includes("[Abono / Pago de deuda]")));
+      const hasIngreso = txs.some(t => t.tipo === "Ingreso");
       
       let accountType = "asset"; 
       if (!hasIngreso && txs.some(t => t.tipo === "Gasto")) accountType = "expense"; 
@@ -588,7 +589,7 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
                   <th className={`w-[35%] px-6 py-4 text-[11px] font-bold uppercase tracking-widest ${textMuted} text-left`}>Registro</th>
                   <th className={`w-[15%] px-6 py-4 text-[11px] font-bold uppercase tracking-widest ${textMuted} text-left`}>Tipo</th>
                   <th className={`w-[15%] px-6 py-4 text-[11px] font-bold uppercase tracking-widest ${textMuted} text-left`}>Balance</th>
-                  <th className={`w-[35%] px-6 py-4 text-[11px] font-bold uppercase tracking-widest ${textMuted} text-center`}>Acciones</th>
+                  <th className={`w-[35%] px-6 py-4 text-[11px] font-bold uppercase tracking-widest ${textMuted} text-left`}>Acciones</th>
                 </tr>
               </thead>
               <tbody>
@@ -623,8 +624,8 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
                         <td className={`px-6 py-3.5 font-semibold text-lg tracking-tight text-left ${colorSaldo}`}>
                           {formatMoney(Math.abs(cuenta.balanceCuenta))}
                         </td>
-                        <td className="px-6 py-3.5">
-                          <div className="flex justify-center items-center gap-1.5">
+                        <td className="px-6 py-3.5 text-left">
+                          <div className="flex justify-start items-center gap-1.5">
                             <button onClick={() => toggleRow(cuenta.id)} className={`${iconBtnClass} ${isRowOpen ? 'bg-[#6366F1] text-white shadow-md' : `bg-[#F4F7FB] dark:bg-[#111827] ${textSecondary} hover:text-[#6366F1] dark:hover:text-indigo-400`}`}>
                               <IconEye />
                             </button>
@@ -703,12 +704,45 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
       </div>
 
       {isModalOpen && <MovementModal token={token} cuentas={cuentas} isDarkMode={isDarkMode} onClose={() => setIsModalOpen(false)} onSuccess={() => { setIsModalOpen(false); fetchDashboard(); }} showToast={showToast} />}
+
+      {/* AQUÍ VA EL BOTÓN FLOTANTE QUE FALTABA */}
+      <button onClick={() => setIsModalOpen(true)} className="fixed bottom-10 right-10 w-16 h-16 rounded-[24px] bg-[#6366F1] text-white flex items-center justify-center hover:scale-105 active:scale-95 transition-all z-40 shadow-[0_8px_30px_rgba(99,102,241,0.4)]">
+        <IconPlus />
+      </button>
+
+      {/* MODAL ELIMINAR */}
+      {deleteModal.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0B1120]/60 backdrop-blur-md">
+          <div className={`w-full max-w-md p-8 rounded-[32px] shadow-2xl border ${isDarkMode ? 'bg-[#1F2937] border-[#374151]' : 'bg-white border-[#E2E8F0]'}`}>
+            <h3 className="text-xl font-semibold mb-2 text-center">Eliminar cuenta</h3>
+            <p className={`text-sm font-medium ${textSecondary} mb-8 text-center`}>¿Seguro que deseas eliminar <strong>{deleteModal.name}</strong> y todo su historial? No podrás deshacerlo.</p>
+            <div className="flex gap-4">
+              <button onClick={() => setDeleteModal({ isOpen: false, id: null, name: '' })} className={`flex-1 py-3.5 rounded-[16px] font-medium bg-[#F4F7FB] dark:bg-[#111827] ${textSecondary} hover:bg-[#E2E8F0] dark:hover:bg-[#374151] transition-colors`}>Cancelar</button>
+              <button onClick={confirmDelete} className="flex-1 py-3.5 rounded-[16px] font-medium bg-[#F43F5E] text-white shadow-[0_8px_20px_rgba(244,63,94,0.25)] hover:bg-rose-600 transition-colors">Eliminar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL EDITAR */}
+      {editModal.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0B1120]/60 backdrop-blur-md">
+          <div className={`w-full max-w-md p-8 rounded-[32px] shadow-2xl border ${isDarkMode ? 'bg-[#1F2937] border-[#374151]' : 'bg-white border-[#E2E8F0]'}`}>
+            <h3 className="text-xl font-semibold mb-6 text-center">Renombrar cuenta</h3>
+            <input type="text" value={editModal.newName} onChange={(e) => setEditModal(prev => ({ ...prev, newName: e.target.value }))} className={`w-full px-5 py-4 rounded-[20px] mb-8 outline-none border font-medium transition-all ${isDarkMode ? 'bg-[#111827] border-[#374151] focus:border-[#6366F1] text-white' : 'bg-[#F4F7FB] border-[#E2E8F0] focus:border-[#6366F1] focus:bg-white'}`} />
+            <div className="flex gap-4">
+              <button onClick={() => setEditModal({ isOpen: false, id: null, name: '', newName: '' })} className={`flex-1 py-3.5 rounded-[16px] font-medium bg-[#F4F7FB] dark:bg-[#111827] ${textSecondary} transition-colors`}>Cancelar</button>
+              <button onClick={confirmEdit} className="flex-1 py-3.5 rounded-[16px] font-medium bg-[#6366F1] text-white shadow-[0_8px_20px_rgba(99,102,241,0.25)] transition-colors">Guardar</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 // ==========================================
-// FORMULARIO MODAL OPTIMIZADO (UX PROFESIONAL PARA PILOTO)
+// FORMULARIO MODAL OPTIMIZADO PARA PILOTO UAEH
 // ==========================================
 function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToast }) {
   const [tipo, setTipo] = useState('Ingreso');
@@ -850,7 +884,7 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
         <form onSubmit={handleSubmit} className="space-y-6">
           
           <div>
-            <label className={labelClass}>Tipo de Acción <span className="text-[#F43F5E] ml-1">•</span></label>
+            <label className={labelClass}>Tipo de Acción</label>
             <div className={`flex gap-1 p-1.5 rounded-[20px] border overflow-x-auto ${isDarkMode ? 'bg-[#111827] border-[#374151]' : 'bg-[#E2E8F0]/50 border-transparent'}`}>
               {['Ingreso', 'Gasto', 'Transferencia'].map(t => (
                 <button 
@@ -867,14 +901,14 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
           {tipo === 'Transferencia' ? (
             <div className="space-y-6">
               <div>
-                <label className={labelClass}>Cuenta Origen (Descuento) <span className="text-[#F43F5E] ml-1">•</span></label>
+                <label className={labelClass}>Cuenta Origen (Descuento)</label>
                 <select required value={origenId} onChange={e => setOrigenId(e.target.value)} className={inputClass}>
                   <option value="" disabled>-- Selecciona de dónde sale --</option>
                   {sourceAccounts.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
                 </select>
               </div>
               <div>
-                <label className={labelClass}>Cuenta Destino (Ingreso) <span className="text-[#F43F5E] ml-1">•</span></label>
+                <label className={labelClass}>Cuenta Destino (Ingreso)</label>
                 <select required value={cuentaId} onChange={e => setCuentaId(e.target.value)} className={inputClass}>
                   <option value="" disabled>-- Selecciona a dónde llega --</option>
                   {sourceAccounts.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
@@ -885,7 +919,7 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
             <div className="space-y-6">
               <div>
                 <label className={labelClass}>
-                  Registro o Persona destino <span className="text-[#F43F5E] ml-1">•</span>
+                  Registro o Persona destino
                 </label>
                 
                 <select value={modo} onChange={(e) => setModo(e.target.value)} className={`${inputClass} mb-4`}>
@@ -917,18 +951,18 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div>
-              <label className={labelClass}>Monto <span className="text-[#F43F5E] ml-1">•</span></label>
+              <label className={labelClass}>Monto</label>
               <input type="text" placeholder="$0" required value={monto} onChange={handleMontoChange} className={inputClass} />
             </div>
             <div>
-              <label className={labelClass}>Fecha <span className="text-[#F43F5E] ml-1">•</span></label>
+              <label className={labelClass}>Fecha</label>
               <input type="date" required value={fecha} onChange={e => setFecha(e.target.value)} className={inputClass} />
             </div>
           </div>
 
           {tipo !== 'Transferencia' && (
             <div>
-              <label className={labelClass}>Categoría <span className="text-[#F43F5E] ml-1">•</span></label>
+              <label className={labelClass}>Categoría</label>
               <select value={categoria} onChange={e => handleCatChange(e.target.value)} className={inputClass}>
                 <option value="" disabled>-- Seleccionar categoría --</option>
                 {getCategorias().map(cat => (
