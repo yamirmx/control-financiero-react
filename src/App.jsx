@@ -80,8 +80,6 @@ const IconPlus = () => <svg width="24" height="24" fill="none" stroke="currentCo
 const IconSearch = () => <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>;
 const IconWallet = (props) => <svg width={props.width || "32"} height={props.height || "32"} fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" {...props}><path strokeLinecap="round" strokeLinejoin="round" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z"></path></svg>;
 const IconList = (props) => <svg width={props.width || "24"} height={props.height || "24"} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>;
-const IconUsers = (props) => <svg width={props.width || "24"} height={props.height || "24"} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 11a4 4 0 100-8 4 4 0 000 8zM23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>;
-const IconHandCoin = (props) => <svg width={props.width || "24"} height={props.height || "24"} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><path d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>;
 const IconClock = (props) => <svg width={props.width || "24"} height={props.height || "24"} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" {...props}><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>;
 
 // ==========================================
@@ -218,7 +216,7 @@ function AuthScreen({ setToken, setUserEmail, showToast, isDarkMode }) {
 }
 
 // ==========================================
-// DASHBOARD (Master View)
+// DASHBOARD
 // ==========================================
 function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, showToast }) {
   const [cuentasRaw, setCuentasRaw] = useState([]);
@@ -265,24 +263,18 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
     }
   };
 
-  // ==========================================
-  // LÓGICA E INFRAESTRUCTURA (INTACTAS)
-  // ==========================================
   const cuentas = useMemo(() => {
     return cuentasRaw.map(c => {
       const txs = c.transacciones || [];
-      
-      const isLoan = txs.some(t => t.tipo === "Préstamo" && (!t.concepto || !t.concepto.includes("[Préstamo Otorgado]")));
       const hasIngreso = txs.some(t => t.tipo === "Ingreso" && (!t.concepto || !t.concepto.includes("[Abono / Pago de deuda]")));
       
       let accountType = "asset"; 
-      if (isLoan) accountType = "loan"; 
-      else if (!hasIngreso && txs.some(t => t.tipo === "Gasto")) accountType = "expense"; 
+      if (!hasIngreso && txs.some(t => t.tipo === "Gasto")) accountType = "expense"; 
       
       let balanceCuenta = 0;
       txs.forEach(t => {
          if(t.tipo === 'Ingreso' || t.tipo === 'Abono') balanceCuenta += t.monto;
-         if(t.tipo === 'Gasto' || t.tipo === 'Préstamo') balanceCuenta -= t.monto;
+         if(t.tipo === 'Gasto') balanceCuenta -= t.monto;
       });
 
       return {
@@ -295,42 +287,27 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
   }, [cuentasRaw]);
 
   const metricas = useMemo(() => {
-    let ingresos = 0, gastos = 0, deuda = 0;
+    let ingresos = 0, gastos = 0;
     const mesActual = new Date().getMonth();
     const anioActual = new Date().getFullYear();
 
     cuentas.forEach(u => {
-      if (u.accountType === 'loan') {
-        if (u.balanceCuenta < 0) deuda += Math.abs(u.balanceCuenta);
-      }
+      (u.transacciones || []).forEach(t => {
+        const fechaTx = new Date(t.fecha);
+        if (fechaTx.getMonth() === mesActual && fechaTx.getFullYear() === anioActual) {
+          const concepto = t.concepto || "";
+          const isTransfer = concepto.includes("[Transferencia]") || concepto.includes("[Pago de]");
 
-      if (u.accountType !== 'loan') {
-        (u.transacciones || []).forEach(t => {
-          const fechaTx = new Date(t.fecha);
-          if (fechaTx.getMonth() === mesActual && fechaTx.getFullYear() === anioActual) {
-            const concepto = t.concepto || "";
-            
-            const isTransfer = concepto.includes("[Transferencia]") || concepto.includes("[Pago de]");
-            const isAbonoDeuda = concepto.includes("[Abono / Pago de deuda]") || concepto.includes("[Capital Devuelto]");
-            const isPrestamoOtorgado = concepto.includes("[Préstamo Otorgado]");
-
-            if (t.tipo === "Ingreso" && !isTransfer && !isAbonoDeuda) {
-              ingresos += t.monto;
-            }
-            if (t.tipo === "Gasto" && !isTransfer && !isPrestamoOtorgado) {
-              gastos += t.monto;
-            }
-          }
-        });
-      }
+          if (t.tipo === "Ingreso" && !isTransfer) ingresos += t.monto;
+          if (t.tipo === "Gasto" && !isTransfer) gastos += t.monto;
+        }
+      });
     });
-    return { ingresos, gastos, deuda };
+    return { ingresos, gastos };
   }, [cuentas]);
 
-  const balanceNeto = metricas.ingresos - metricas.gastos - metricas.deuda;
+  const balanceNeto = metricas.ingresos - metricas.gastos;
   const cuentasActivas = cuentas.length;
-  const deudoresActivos = cuentas.filter(c => c.accountType === 'loan' && c.balanceCuenta < 0).length;
-  const prestamosPendientes = metricas.deuda;
 
   const ultimoMovimiento = useMemo(() => {
       let allTx = [];
@@ -371,9 +348,7 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
   const generarCSV = (cuenta) => {
     let csvContent = "Fecha,Tipo,Monto,Concepto\n";
     (cuenta.transacciones || []).forEach(t => {
-      let tipo = t.tipo;
-      if (t.concepto && t.concepto.includes("[Préstamo Otorgado]")) tipo = "Préstamo";
-      csvContent += `${new Date(t.fecha).toLocaleDateString()},${tipo},${t.monto},${cleanConcepto(t.concepto)}\n`;
+      csvContent += `${new Date(t.fecha).toLocaleDateString()},${t.tipo},${t.monto},${cleanConcepto(t.concepto)}\n`;
     });
     const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), csvContent], { type: "text/csv;charset=utf-8;" });
     const link = document.createElement("a");
@@ -394,9 +369,7 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
     doc.setFont("helvetica", "normal"); doc.setFontSize(12); doc.text(`Registro: ${cuenta.nombre}`, 14, 28);
     
     const tablaDatos = (cuenta.transacciones || []).map(t => {
-      let tipo = t.tipo;
-      if (t.concepto && t.concepto.includes("[Préstamo Otorgado]")) tipo = "Préstamo";
-      return [ tipo, `${formatMoney(t.monto)}`, new Date(t.fecha).toLocaleDateString(), cleanConcepto(t.concepto) ];
+      return [ t.tipo, `${formatMoney(t.monto)}`, new Date(t.fecha).toLocaleDateString(), cleanConcepto(t.concepto) ];
     });
 
     doc.autoTable({ startY: 35, head: [['Tipo', 'Monto', 'Fecha', 'Concepto']], body: tablaDatos, headStyles: { fillColor: [99, 102, 241] } });
@@ -404,27 +377,21 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
   };
 
   const chartData = useMemo(() => {
-    const total = metricas.ingresos + metricas.gastos + metricas.deuda;
+    const total = metricas.ingresos + metricas.gastos;
     if (total === 0) return null;
     const r = 50; const circ = 2 * Math.PI * r;
     return {
       r, circ, total,
       ingDash: `${(metricas.ingresos / total) * circ} ${circ}`,
       gasDash: `${(metricas.gastos / total) * circ} ${circ}`,
-      deuDash: `${(metricas.deuda / total) * circ} ${circ}`,
       gasOffset: -((metricas.ingresos / total) * circ),
-      deuOffset: -(((metricas.ingresos + metricas.gastos) / total) * circ),
       pctIngresos: ((metricas.ingresos / total) * 100).toFixed(1),
       pctGastos: ((metricas.gastos / total) * 100).toFixed(1),
-      pctDeuda: ((metricas.deuda / total) * 100).toFixed(1),
     };
   }, [metricas]);
 
   const cardClass = `rounded-[32px] transition-all border ${isDarkMode ? 'bg-[#1F2937] border-[#374151] shadow-2xl' : 'bg-[#F7F9FC] border-[#E2E8F0] shadow-[0_8px_30px_rgb(0,0,0,0.04)]'}`;
-  
-  // Botones sutilmente más pequeños para mayor densidad y look profesional
   const iconBtnClass = `w-9 h-9 rounded-[10px] flex items-center justify-center transition-all duration-200 hover:scale-105 active:scale-95`;
-  
   const textMuted = isDarkMode ? 'text-[#9CA3AF]' : 'text-[#64748B]';
   const textSecondary = isDarkMode ? 'text-[#D1D5DB]' : 'text-[#475569]';
 
@@ -490,8 +457,8 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
         </div>
       </header>
 
-      {/* MÉTRICAS SUPERIORES */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+      {/* MÉTRICAS (SOLO INGRESOS Y GASTOS PARA EL PILOTO) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         <div className={`${cardClass} p-8 flex flex-col items-center justify-center text-center`}>
           <p className={`uppercase tracking-widest text-xs font-medium ${textMuted} mb-2`}>Ingresos (Mes)</p>
           <h2 className="text-[40px] font-semibold text-[#10B981] tracking-tighter leading-none"><AnimatedCounter value={metricas.ingresos} /></h2>
@@ -500,17 +467,12 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
           <p className={`uppercase tracking-widest text-xs font-medium ${textMuted} mb-2`}>Gastos (Mes)</p>
           <h2 className="text-[40px] font-semibold text-[#F43F5E] tracking-tighter leading-none"><AnimatedCounter value={metricas.gastos} /></h2>
         </div>
-        <div className={`${cardClass} p-8 flex flex-col items-center justify-center text-center`}>
-          <p className={`uppercase tracking-widest text-xs font-medium ${textMuted} mb-2`}>Deuda Activa (A tu favor)</p>
-          <h2 className="text-[40px] font-semibold text-[#1E293B] dark:text-[#F9FAFB] tracking-tighter leading-none"><AnimatedCounter value={metricas.deuda} /></h2>
-        </div>
       </div>
 
       {/* DASHBOARD VISUAL (RESUMEN FINANCIERO) */}
       <div className={`${cardClass} mb-8 overflow-hidden`}>
         <div className="flex flex-col lg:flex-row">
           
-          {/* DISTRIBUCIÓN FINANCIERA (IZQUIERDA) */}
           <div className="flex-1 p-8 lg:border-r border-[#E2E8F0] dark:border-[#374151] flex flex-col justify-start">
             <h3 className={`text-[11px] font-bold uppercase tracking-widest ${textMuted} mb-6 text-left w-full`}>Distribución Financiera</h3>
             
@@ -522,7 +484,6 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
                     <circle cx="60" cy="60" r={chartData.r} fill="transparent" stroke={isDarkMode ? '#273449' : '#E2E8F0'} strokeWidth="12" />
                     <circle cx="60" cy="60" r={chartData.r} fill="transparent" stroke="#10B981" strokeWidth="12" strokeDasharray={chartData.ingDash} />
                     <circle cx="60" cy="60" r={chartData.r} fill="transparent" stroke="#F43F5E" strokeWidth="12" strokeDasharray={chartData.gasDash} strokeDashoffset={chartData.gasOffset} />
-                    <circle cx="60" cy="60" r={chartData.r} fill="transparent" stroke={isDarkMode ? '#FFFFFF' : '#1E293B'} strokeWidth="12" strokeDasharray={chartData.deuDash} strokeDashoffset={chartData.deuOffset} />
                   </svg>
                   <div className="absolute inset-0 flex flex-col items-center justify-center">
                     <span className="text-xl font-bold text-[#1E293B] dark:text-[#F9FAFB]">{formatMoney(balanceNeto)}</span>
@@ -551,16 +512,6 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
                       <span className={`text-sm font-medium ${textMuted}`}>{formatMoney(metricas.gastos)}</span>
                     </div>
                   </div>
-                  <div className="flex items-start gap-3 w-40">
-                    <span className={`w-3 h-3 rounded-full ${isDarkMode ? 'bg-white' : 'bg-[#1E293B]'} mt-1`}></span>
-                    <div className="flex flex-col w-full">
-                      <div className="flex justify-between items-center w-full">
-                        <span className="text-sm font-semibold text-[#1E293B] dark:text-[#F9FAFB]">Deuda Activa</span>
-                        <span className={`text-xs font-medium ${textSecondary}`}>{chartData.pctDeuda}%</span>
-                      </div>
-                      <span className={`text-sm font-medium ${textMuted}`}>{formatMoney(metricas.deuda)}</span>
-                    </div>
-                  </div>
                 </div>
 
               </div>
@@ -569,7 +520,6 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
             )}
           </div>
 
-          {/* RESUMEN FINANCIERO (DERECHA) */}
           <div className="flex-1 p-8 flex flex-col justify-start bg-[#F8FAFC] dark:bg-[#111827]/30">
             <h3 className={`text-[11px] font-bold uppercase tracking-widest ${textMuted} mb-6 text-left w-full`}>Resumen Financiero</h3>
             
@@ -589,25 +539,8 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
                 </div>
                 <span className="text-base font-semibold text-[#1E293B] dark:text-[#F9FAFB]">{cuentasActivas}</span>
               </div>
-
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-[12px] bg-[#F43F5E]/10 text-[#F43F5E] flex items-center justify-center"><IconUsers width="20" height="20" /></div>
-                  <span className="text-sm font-medium text-[#1E293B] dark:text-[#F9FAFB]">Deudores activos</span>
-                </div>
-                <span className="text-base font-semibold text-[#1E293B] dark:text-[#F9FAFB]">{deudoresActivos}</span>
-              </div>
-
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-[12px] bg-[#F59E0B]/10 text-[#F59E0B] flex items-center justify-center"><IconHandCoin width="20" height="20" /></div>
-                  <span className="text-sm font-medium text-[#1E293B] dark:text-[#F9FAFB]">Préstamos pendientes</span>
-                </div>
-                <span className="text-base font-semibold text-[#F59E0B]">{formatMoney(prestamosPendientes)}</span>
-              </div>
             </div>
 
-            {/* Último Movimiento */}
             <div className="mt-6 pt-6 border-t border-[#E2E8F0] dark:border-[#374151] w-full">
               <h4 className={`text-[10px] font-bold uppercase tracking-widest ${textMuted} mb-4`}>Último movimiento</h4>
               {ultimoMovimiento ? (
@@ -616,7 +549,7 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
                     <div className={`w-10 h-10 rounded-[12px] bg-[#E2E8F0] dark:bg-[#374151] flex items-center justify-center ${textMuted}`}><IconClock width="20" height="20" /></div>
                     <div className="flex flex-col">
                       <span className="text-sm font-semibold text-[#1E293B] dark:text-[#F9FAFB] truncate max-w-[150px] sm:max-w-xs">{cleanConcepto(ultimoMovimiento.concepto) || ultimoMovimiento.cuentaNombre}</span>
-                      <span className={`text-sm font-bold ${ultimoMovimiento.tipo === 'Gasto' ? 'text-[#F43F5E]' : ultimoMovimiento.tipo === 'Ingreso' || ultimoMovimiento.tipo === 'Abono' ? 'text-[#10B981]' : 'text-[#6366F1]'}`}>
+                      <span className={`text-sm font-bold ${ultimoMovimiento.tipo === 'Gasto' ? 'text-[#F43F5E]' : 'text-[#10B981]'}`}>
                         {ultimoMovimiento.tipo === 'Gasto' ? '-' : '+'}{formatMoney(ultimoMovimiento.monto)}
                       </span>
                     </div>
@@ -652,23 +585,20 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
             <table className="w-full text-left border-collapse min-w-[750px]">
               <thead>
                 <tr className="border-b border-[#E2E8F0] dark:border-[#374151] bg-[#F4F7FB]/50 dark:bg-[#111827]/50">
-                  {/* AJUSTE DE COLUMNAS PARA ALTA DENSIDAD Y LECTURA CONTINUA */}
                   <th className={`w-[35%] px-6 py-4 text-[11px] font-bold uppercase tracking-widest ${textMuted} text-left`}>Registro</th>
                   <th className={`w-[15%] px-6 py-4 text-[11px] font-bold uppercase tracking-widest ${textMuted} text-left`}>Tipo</th>
                   <th className={`w-[15%] px-6 py-4 text-[11px] font-bold uppercase tracking-widest ${textMuted} text-left`}>Balance</th>
-                  <th className={`w-[35%] px-6 py-4 text-[11px] font-bold uppercase tracking-widest ${textMuted} text-left`}>Acciones</th>
+                  <th className={`w-[35%] px-6 py-4 text-[11px] font-bold uppercase tracking-widest ${textMuted} text-center`}>Acciones</th>
                 </tr>
               </thead>
               <tbody>
                 {cuentas.filter(c => c.nombre.toLowerCase().includes(searchTerm.toLowerCase())).map(cuenta => {
                   let colorSaldo = "text-[#10B981]"; 
                   if (cuenta.balanceCuenta === 0) colorSaldo = "text-[#10B981]";
-                  else if (cuenta.accountType === 'loan') colorSaldo = isDarkMode ? "text-[#D1D5DB]" : "text-[#1E293B]"; 
                   else if (cuenta.balanceCuenta < 0) colorSaldo = "text-[#F43F5E]"; 
 
                   let mainType = "General";
-                  if (cuenta.accountType === 'loan') mainType = "Préstamo";
-                  else if (cuenta.accountType === 'expense') mainType = "Gasto";
+                  if (cuenta.accountType === 'expense') mainType = "Gasto";
                   else if (cuenta.accountType === 'asset') mainType = "Ingreso";
 
                   const txFiltradas = filterMonth ? (cuenta.transacciones || []).filter(t => t.fecha.startsWith(filterMonth)) : (cuenta.transacciones || []);
@@ -678,7 +608,6 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
 
                   return (
                     <React.Fragment key={cuenta.id}>
-                      {/* --- FILA PRINCIPAL COMPACTA --- */}
                       <tr className={`border-b border-[#E2E8F0] dark:border-[#374151] hover:bg-[#F8FAFC] dark:hover:bg-[#1F2937]/50 transition-all duration-200 group ${isRowOpen ? (isDarkMode ? 'bg-[#1F2937]/50' : 'bg-[#F8FAFC]') : ''}`}>
                         <td className="px-6 py-3.5 text-left">
                           <div className={`text-[10px] font-medium tracking-widest ${textMuted} mb-1 opacity-70`}>ID {cuenta.id}</div>
@@ -694,8 +623,8 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
                         <td className={`px-6 py-3.5 font-semibold text-lg tracking-tight text-left ${colorSaldo}`}>
                           {formatMoney(Math.abs(cuenta.balanceCuenta))}
                         </td>
-                        <td className="px-6 py-3.5 text-left">
-                          <div className="flex justify-start items-center gap-1.5">
+                        <td className="px-6 py-3.5">
+                          <div className="flex justify-center items-center gap-1.5">
                             <button onClick={() => toggleRow(cuenta.id)} className={`${iconBtnClass} ${isRowOpen ? 'bg-[#6366F1] text-white shadow-md' : `bg-[#F4F7FB] dark:bg-[#111827] ${textSecondary} hover:text-[#6366F1] dark:hover:text-indigo-400`}`}>
                               <IconEye />
                             </button>
@@ -707,7 +636,6 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
                         </td>
                       </tr>
 
-                      {/* --- SECCIÓN EXPANDIDA --- */}
                       {isRowOpen && (
                         <tr>
                           <td colSpan="4" className="p-0 bg-[#F8FAFC] dark:bg-[#0B1120]/40 border-b border-[#E2E8F0] dark:border-[#374151]">
@@ -720,13 +648,9 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
                                 <div className="flex flex-col gap-3">
                                   {txFiltradas.map((t) => {
                                     let label = t.tipo;
-                                    if (t.concepto && t.concepto.includes("[Préstamo Otorgado]")) label = "Préstamo";
-                                    if (t.concepto && t.concepto.includes("[Abono / Pago de deuda]")) label = "Abono / Pago de deuda";
-                                    
                                     let dotClass = "bg-[#64748B]";
-                                    if (label === 'Ingreso' || label === 'Abono / Pago de deuda') dotClass = "bg-[#10B981]";
+                                    if (label === 'Ingreso') dotClass = "bg-[#10B981]";
                                     if (label === 'Gasto') dotClass = "bg-[#F43F5E]";
-                                    if (label === 'Préstamo') dotClass = "bg-[#6366F1]";
 
                                     return (
                                       <div key={t.id} className={`p-5 rounded-[20px] border ${isDarkMode ? 'bg-[#1F2937] border-[#374151]' : 'bg-white border-[#E2E8F0]'} shadow-sm hover:shadow-md transition-shadow flex flex-col gap-3`}>
@@ -779,45 +703,12 @@ function Dashboard({ token, userEmail, handleLogout, isDarkMode, toggleTheme, sh
       </div>
 
       {isModalOpen && <MovementModal token={token} cuentas={cuentas} isDarkMode={isDarkMode} onClose={() => setIsModalOpen(false)} onSuccess={() => { setIsModalOpen(false); fetchDashboard(); }} showToast={showToast} />}
-
-      {/* FAB BTN */}
-      <button onClick={() => setIsModalOpen(true)} className="fixed bottom-10 right-10 w-16 h-16 rounded-[24px] bg-[#6366F1] text-white flex items-center justify-center hover:scale-105 active:scale-95 transition-all z-40 shadow-[0_8px_30px_rgba(99,102,241,0.4)]">
-        <IconPlus />
-      </button>
-
-      {/* MODAL ELIMINAR */}
-      {deleteModal.isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0B1120]/60 backdrop-blur-md">
-          <div className={`w-full max-w-md p-8 rounded-[32px] shadow-2xl border ${isDarkMode ? 'bg-[#1F2937] border-[#374151]' : 'bg-white border-[#E2E8F0]'}`}>
-            <h3 className="text-xl font-semibold mb-2 text-center">Eliminar cuenta</h3>
-            <p className={`text-sm font-medium ${textSecondary} mb-8 text-center`}>¿Seguro que deseas eliminar <strong>{deleteModal.name}</strong> y todo su historial? No podrás deshacerlo.</p>
-            <div className="flex gap-4">
-              <button onClick={() => setDeleteModal({ isOpen: false, id: null, name: '' })} className={`flex-1 py-3.5 rounded-[16px] font-medium bg-[#F4F7FB] dark:bg-[#111827] ${textSecondary} hover:bg-[#E2E8F0] dark:hover:bg-[#374151] transition-colors`}>Cancelar</button>
-              <button onClick={confirmDelete} className="flex-1 py-3.5 rounded-[16px] font-medium bg-[#F43F5E] text-white shadow-[0_8px_20px_rgba(244,63,94,0.25)] hover:bg-rose-600 transition-colors">Eliminar</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* MODAL EDITAR */}
-      {editModal.isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#0B1120]/60 backdrop-blur-md">
-          <div className={`w-full max-w-md p-8 rounded-[32px] shadow-2xl border ${isDarkMode ? 'bg-[#1F2937] border-[#374151]' : 'bg-white border-[#E2E8F0]'}`}>
-            <h3 className="text-xl font-semibold mb-6 text-center">Renombrar cuenta</h3>
-            <input type="text" value={editModal.newName} onChange={(e) => setEditModal(prev => ({ ...prev, newName: e.target.value }))} className={`w-full px-5 py-4 rounded-[20px] mb-8 outline-none border font-medium transition-all ${isDarkMode ? 'bg-[#111827] border-[#374151] focus:border-[#6366F1] text-white' : 'bg-[#F4F7FB] border-[#E2E8F0] focus:border-[#6366F1] focus:bg-white'}`} />
-            <div className="flex gap-4">
-              <button onClick={() => setEditModal({ isOpen: false, id: null, name: '', newName: '' })} className={`flex-1 py-3.5 rounded-[16px] font-medium bg-[#F4F7FB] dark:bg-[#111827] ${textSecondary} transition-colors`}>Cancelar</button>
-              <button onClick={confirmEdit} className="flex-1 py-3.5 rounded-[16px] font-medium bg-[#6366F1] text-white shadow-[0_8px_20px_rgba(99,102,241,0.25)] transition-colors">Guardar</button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
 
 // ==========================================
-// FORMULARIO MODAL OPTIMIZADO (UX PROFESIONAL)
+// FORMULARIO MODAL OPTIMIZADO (UX PROFESIONAL PARA PILOTO)
 // ==========================================
 function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToast }) {
   const [tipo, setTipo] = useState('Ingreso');
@@ -831,11 +722,7 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
   const [concepto, setConcepto] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const isAbono = tipo === 'Préstamo' && categoria === 'Abono / Pago de deuda';
-  const isPrestamoOut = tipo === 'Préstamo' && categoria && !isAbono;
-  
   const sourceAccounts = cuentas.filter(c => c.canBeSourceOfFunds);
-  const loanAccounts = cuentas.filter(c => c.accountType === 'loan');
 
   const handleTypeChange = (t) => {
     setTipo(t);
@@ -855,8 +742,6 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
         return ['Nómina / Salario', 'Comisiones', 'Ventas', 'Bono', 'Otros ingresos'];
       case 'Gasto':
         return ['Comida y despensa', 'Transporte / Gasolina', 'Vivienda y servicios', 'Salud', 'Educación', 'Ocio y entretenimiento', 'Otros gastos'];
-      case 'Préstamo':
-        return ['Préstamo personal', 'Préstamo familiar', 'Préstamo laboral', 'Otro préstamo', 'Abono / Pago de deuda'];
       default:
         return [];
     }
@@ -884,7 +769,7 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
     setLoading(true);
 
     try {
-      if ((tipo === 'Gasto' || isPrestamoOut || tipo === 'Transferencia') && origenId) {
+      if ((tipo === 'Gasto' || tipo === 'Transferencia') && origenId) {
         const acc = cuentas.find(c => c.id === Number(origenId));
         if (acc && acc.balanceCuenta < finalMonto) {
             setLoading(false);
@@ -917,37 +802,15 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
         return;
       }
 
-      if (isAbono) {
-        const deudorName = cuentas.find(c => c.id === Number(cuentaId))?.nombre || "Deudor";
-        
-        await fetch(`${API}/movimientos`, { 
-          method: 'POST', headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`}, 
-          body: JSON.stringify({ cuentaId: Number(cuentaId), tipo: "Ingreso", monto: finalMonto, concepto: `[Abono / Pago de deuda] ${concepto}`.trim(), fecha: fecha ? new Date(fecha + "T12:00:00").toISOString() : new Date().toISOString() }) 
-        });
-
-        if (origenId) {
-          await fetch(`${API}/movimientos`, { 
-            method: 'POST', headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`}, 
-            body: JSON.stringify({ cuentaId: Number(origenId), tipo: "Ingreso", monto: finalMonto, concepto: `[Abono / Pago de deuda] recibido de ${deudorName}`, fecha: fecha ? new Date(fecha + "T12:00:00").toISOString() : new Date().toISOString() }) 
-          });
-        }
-        
-        onSuccess();
-        return;
-      }
-
       let targetId = cuentaId;
-      let targetName = "";
-
+      
       if (modo === "NEW") {
         const res = await fetch(`${API}/cuentas`, { 
           method: 'POST', headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`}, 
           body: JSON.stringify({ nombre: nombreNuevo, monto: 0 }) 
         });
         const data = await res.json();
-        targetId = data.id; targetName = data.nombre;
-      } else {
-        targetName = cuentas.find(c => c.id === Number(cuentaId))?.nombre || "Cuenta";
+        targetId = data.id; 
       }
 
       const conceptoFinal = `[${categoria}] ${concepto}`.trim();
@@ -957,10 +820,10 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
         body: JSON.stringify({ cuentaId: Number(targetId), tipo, monto: finalMonto, concepto: conceptoFinal, fecha: fecha ? new Date(fecha + "T12:00:00").toISOString() : new Date().toISOString() }) 
       });
 
-      if ((isPrestamoOut || tipo === 'Gasto') && origenId) {
+      if (tipo === 'Gasto' && origenId) {
         await fetch(`${API}/movimientos`, { 
           method: 'POST', headers: {'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`}, 
-          body: JSON.stringify({ cuentaId: Number(origenId), tipo: "Gasto", monto: finalMonto, concepto: tipo === "Préstamo" ? `[Préstamo Otorgado] a ${targetName}` : `[Pago de] ${targetName}`, fecha: fecha ? new Date(fecha + "T12:00:00").toISOString() : new Date().toISOString() }) 
+          body: JSON.stringify({ cuentaId: Number(origenId), tipo: "Gasto", monto: finalMonto, concepto: `[Pago de] ${cuentas.find(c => c.id === Number(targetId))?.nombre || "Cuenta"}`, fecha: fecha ? new Date(fecha + "T12:00:00").toISOString() : new Date().toISOString() }) 
         });
       }
 
@@ -987,9 +850,9 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
         <form onSubmit={handleSubmit} className="space-y-6">
           
           <div>
-            <label className={labelClass}>Tipo de Acción</label>
+            <label className={labelClass}>Tipo de Acción <span className="text-[#F43F5E] ml-1">•</span></label>
             <div className={`flex gap-1 p-1.5 rounded-[20px] border overflow-x-auto ${isDarkMode ? 'bg-[#111827] border-[#374151]' : 'bg-[#E2E8F0]/50 border-transparent'}`}>
-              {['Ingreso', 'Gasto', 'Transferencia', 'Préstamo'].map(t => (
+              {['Ingreso', 'Gasto', 'Transferencia'].map(t => (
                 <button 
                   key={t} type="button" 
                   onClick={() => handleTypeChange(t)} 
@@ -1001,77 +864,46 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
             </div>
           </div>
 
-          {tipo === 'Préstamo' && (
-            <div>
-              <label className={labelClass}>Categoría</label>
-              <select value={categoria} onChange={e => handleCatChange(e.target.value)} className={inputClass}>
-                <option value="" disabled>-- Seleccionar categoría --</option>
-                {getCategorias().map(cat => (
-                  <option key={cat} value={cat}>{cat}</option>
-                ))}
-              </select>
-            </div>
-          )}
-
           {tipo === 'Transferencia' ? (
             <div className="space-y-6">
               <div>
-                <label className={labelClass}>Cuenta Origen (Descuento)</label>
+                <label className={labelClass}>Cuenta Origen (Descuento) <span className="text-[#F43F5E] ml-1">•</span></label>
                 <select required value={origenId} onChange={e => setOrigenId(e.target.value)} className={inputClass}>
                   <option value="" disabled>-- Selecciona de dónde sale --</option>
                   {sourceAccounts.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
                 </select>
               </div>
               <div>
-                <label className={labelClass}>Cuenta Destino (Ingreso)</label>
+                <label className={labelClass}>Cuenta Destino (Ingreso) <span className="text-[#F43F5E] ml-1">•</span></label>
                 <select required value={cuentaId} onChange={e => setCuentaId(e.target.value)} className={inputClass}>
                   <option value="" disabled>-- Selecciona a dónde llega --</option>
                   {sourceAccounts.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
                 </select>
               </div>
             </div>
-          ) : (tipo !== 'Préstamo' || categoria) ? (
+          ) : (
             <div className="space-y-6">
               <div>
                 <label className={labelClass}>
-                  {isAbono ? 'Deudor' : 'Registro o Persona destino'}
+                  Registro o Persona destino <span className="text-[#F43F5E] ml-1">•</span>
                 </label>
                 
-                {isAbono ? (
-                  <select required value={cuentaId} onChange={e => setCuentaId(e.target.value)} className={inputClass}>
-                    <option value="" disabled>-- Seleccionar deudor --</option>
-                    {loanAccounts.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-                  </select>
-                ) : (
-                  <>
-                    <select value={modo} onChange={(e) => setModo(e.target.value)} className={`${inputClass} mb-4`}>
-                      <option value="EXISTING">Seleccionar registro existente</option>
-                      <option value="NEW">Crear nuevo registro</option>
-                    </select>
+                <select value={modo} onChange={(e) => setModo(e.target.value)} className={`${inputClass} mb-4`}>
+                  <option value="EXISTING">Seleccionar registro existente</option>
+                  <option value="NEW">Crear nuevo registro</option>
+                </select>
 
-                    {modo === "NEW" ? (
-                      <input type="text" placeholder="Escribe el nuevo nombre" required value={nombreNuevo} onChange={e => setNombreNuevo(e.target.value)} className={inputClass} />
-                    ) : (
-                      <select required value={cuentaId} onChange={e => setCuentaId(e.target.value)} className={inputClass}>
-                        <option value="" disabled>-- Selecciona el registro --</option>
-                        {cuentas.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-                      </select>
-                    )}
-                  </>
+                {modo === "NEW" ? (
+                  <input type="text" placeholder="Escribe el nuevo nombre" required value={nombreNuevo} onChange={e => setNombreNuevo(e.target.value)} className={inputClass} />
+                ) : (
+                  <select required value={cuentaId} onChange={e => setCuentaId(e.target.value)} className={inputClass}>
+                    <option value="" disabled>-- Selecciona el registro --</option>
+                    {cuentas.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
+                  </select>
                 )}
               </div>
 
-              {isAbono && (
-                <div>
-                  <label className={labelClass}>¿A qué cuenta regresa el dinero?</label>
-                  <select value={origenId} onChange={e => setOrigenId(e.target.value)} className={inputClass}>
-                    <option value="">No registrar en otra cuenta</option>
-                    {sourceAccounts.map(c => <option key={c.id} value={c.id}>{c.nombre}</option>)}
-                  </select>
-                </div>
-              )}
-
-              {(isPrestamoOut || tipo === 'Gasto') && (
+              {tipo === 'Gasto' && (
                 <div>
                   <label className={labelClass}>¿De qué cuenta saldrá el dinero?</label>
                   <select value={origenId} onChange={e => setOrigenId(e.target.value)} className={inputClass}>
@@ -1081,24 +913,22 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
                 </div>
               )}
             </div>
-          ) : null}
-
-          {(tipo !== 'Préstamo' || categoria) && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              <div>
-                <label className={labelClass}>Monto</label>
-                <input type="text" placeholder="$0" required value={monto} onChange={handleMontoChange} className={inputClass} />
-              </div>
-              <div>
-                <label className={labelClass}>Fecha</label>
-                <input type="date" required value={fecha} onChange={e => setFecha(e.target.value)} className={inputClass} />
-              </div>
-            </div>
           )}
 
-          {(tipo === 'Ingreso' || tipo === 'Gasto') && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div>
-              <label className={labelClass}>Categoría</label>
+              <label className={labelClass}>Monto <span className="text-[#F43F5E] ml-1">•</span></label>
+              <input type="text" placeholder="$0" required value={monto} onChange={handleMontoChange} className={inputClass} />
+            </div>
+            <div>
+              <label className={labelClass}>Fecha <span className="text-[#F43F5E] ml-1">•</span></label>
+              <input type="date" required value={fecha} onChange={e => setFecha(e.target.value)} className={inputClass} />
+            </div>
+          </div>
+
+          {tipo !== 'Transferencia' && (
+            <div>
+              <label className={labelClass}>Categoría <span className="text-[#F43F5E] ml-1">•</span></label>
               <select value={categoria} onChange={e => handleCatChange(e.target.value)} className={inputClass}>
                 <option value="" disabled>-- Seleccionar categoría --</option>
                 {getCategorias().map(cat => (
@@ -1108,9 +938,9 @@ function MovementModal({ token, cuentas, isDarkMode, onClose, onSuccess, showToa
             </div>
           )}
 
-          {(tipo !== 'Préstamo' || categoria) && tipo !== 'Transferencia' && (
+          {tipo !== 'Transferencia' && (
             <div>
-              <label className={labelClass}>Concepto</label>
+              <label className={labelClass}>Concepto (Opcional)</label>
               <textarea 
                 placeholder="Ej. Salario quincenal, Pago de internet..." 
                 value={concepto} 
